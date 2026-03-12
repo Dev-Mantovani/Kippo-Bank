@@ -5,15 +5,18 @@ import { obterPeriodoMes, NOMES_MESES } from '../../utils/months';
 import { useTema } from '../../contexts/TemaContexto';
 import ModalReceita from '../Receitas/ReceitaModal';
 import ModalDespesa from '../Despesas/DespesaModal';
+import { ModalExcluirRecorrente } from '../../components/ModalExcluirRecorrente/ModalExcluirRecorrente';
+import { excluirTransacao, eTransacaoOriginal } from '../../utils/excluirTransacao';
+import type { ModoExclusao } from '../../utils/excluirTransacao';
 import type { Transacao, MembroFamilia, Conta, Cartao } from '../../types';
 
 interface Props { idUsuario: string; mesAtual: number; anoAtual: number; aoMudarMes: (m: number, a: number) => void; }
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
-const ICONES: Record<string, string> = { Salário:'💰',Freelance:'💼',Investimentos:'📈',Bônus:'🎁',Outros:'💵',Alimentação:'🍔',Moradia:'🏠',Transporte:'🚗',Saúde:'💊',Educação:'📚',Lazer:'🎮',Assinaturas:'📱',Contas:'⚡',Aluguel:'🏠',Supermercado:'🛒',Internet:'🌐',Combustível:'⛽',Roupas:'👗',Streamings:'📺' };
+const ICONES: Record<string, string> = { Salário: '💰', Freelance: '💼', Investimentos: '📈', Bônus: '🎁', Outros: '💵', Alimentação: '🍔', Moradia: '🏠', Transporte: '🚗', Saúde: '💊', Educação: '📚', Lazer: '🎮', Assinaturas: '📱', Contas: '⚡', Aluguel: '🏠', Supermercado: '🛒', Internet: '🌐', Combustível: '⛽', Roupas: '👗', Streamings: '📺' };
 
-const IconSearch = () => <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
+const IconSearch = () => <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>;
 
 export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMudarMes }: Props) {
   const { cores } = useTema();
@@ -22,12 +25,13 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
   const [contas, setContas] = useState<Conta[]>([]);
   const [cartoes, setCartoes] = useState<Cartao[]>([]);
   const [busca, setBusca] = useState('');
-  const [filtro, setFiltro] = useState<'todos'|'receita'|'despesa'>('todos');
-  const [modalTipo, setModalTipo] = useState<'receita'|'despesa'|null>(null);
+  const [filtro, setFiltro] = useState<'todos' | 'receita' | 'despesa'>('todos');
+  const [modalTipo, setModalTipo] = useState<'receita' | 'despesa' | null>(null);
   const [fabAberto, setFabAberto] = useState(false);
   const [carregando, setCarregando] = useState(true);
+  const [transacaoParaExcluir, setTransacaoParaExcluir] = useState<Transacao | null>(null);
 
-  const fmtMes = (m: number, a: number) => `${NOMES_MESES[m-1].slice(0,3).toLowerCase()}/${String(a).slice(2)}`;
+  const fmtMes = (m: number, a: number) => `${NOMES_MESES[m - 1].slice(0, 3).toLowerCase()}/${String(a).slice(2)}`;
   const mesAntN = mesAtual === 1 ? 12 : mesAtual - 1;
   const mesProxN = mesAtual === 12 ? 1 : mesAtual + 1;
   const anoAnt = mesAtual === 1 ? anoAtual - 1 : anoAtual;
@@ -52,9 +56,18 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
     setCarregando(false);
   };
 
-  const excluir = async (id: string) => {
+  const handleExcluir = async (transacao: Transacao) => {
+    if (transacao.recorrente) {
+      const eOriginal = await eTransacaoOriginal(transacao);
+      if (eOriginal) {
+        // Abre o modal para o usuário escolher
+        setTransacaoParaExcluir(transacao);
+        return;
+      }
+    }
+    // Não é recorrente ou não é o original → confirma e deleta direto
     if (!window.confirm('Excluir esta transação?')) return;
-    await supabase.from('transactions').delete().eq('id', id);
+    await excluirTransacao(transacao, 'apenas_esta');
     carregarDados();
   };
 
@@ -62,7 +75,7 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
   const grupos: Record<string, Transacao[]> = {};
   filtradas.forEach(t => { (grupos[t.data] ??= []).push(t); });
 
-  const fmtGrupo = (d: string) => new Date(d+'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const fmtGrupo = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   const card = { background: cores.bgCard, borderRadius: 18, border: `1px solid ${cores.borda}`, boxShadow: cores.sombra, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 };
 
@@ -76,7 +89,7 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
       <div style={{ padding: '16px 16px 0' }}>
         {/* Filtro tipo */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          {(['todos','receita','despesa'] as const).map(f => (
+          {(['todos', 'receita', 'despesa'] as const).map(f => (
             <button key={f} onClick={() => setFiltro(f)} style={{ padding: '7px 16px', borderRadius: 99, border: 'none', cursor: 'pointer', background: filtro === f ? cores.azulPrimario : cores.bgTerciario, color: filtro === f ? '#fff' : cores.textoSutil, fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans',sans-serif", transition: 'all .2s' }}>
               {f === 'todos' ? 'Todos' : f === 'receita' ? '💰 Receitas' : '💸 Despesas'}
             </button>
@@ -123,7 +136,7 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
                       </div>
                       <span style={{ fontSize: 11, fontWeight: 600, color: (t.status === 'recebido' || t.status === 'pago') ? cores.verdeTexto : cores.amareloTexto, background: (t.status === 'recebido' || t.status === 'pago') ? cores.verdeFundo : cores.amareloFundo, padding: '2px 8px', borderRadius: 99, fontFamily: "'DM Sans',sans-serif", marginTop: 2, display: 'inline-block' }}>{t.status}</span>
                     </div>
-                    <button onClick={() => excluir(t.id)} style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: cores.vermelhFundo, cursor: 'pointer', fontSize: 13, flexShrink: 0 }}>🗑️</button>
+                    <button onClick={() => handleExcluir(t)} style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: cores.vermelhFundo, cursor: 'pointer', fontSize: 13, flexShrink: 0 }}>🗑️</button>
                   </div>
                 ))}
               </div>
@@ -134,31 +147,19 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
 
       {/* FAB com dois botões */}
       <div style={{ position: 'fixed', bottom: 90, right: 'calc(50% - 215px + 16px)', zIndex: 50, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>
-        {/* Botões expandidos */}
         {fabAberto && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, animation: 'fadeUp .15s ease' }}>
               <span style={{ background: cores.bgCard, color: cores.textoCorpo, fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans',sans-serif", padding: '6px 12px', borderRadius: 10, boxShadow: cores.sombra, whiteSpace: 'nowrap' }}>Nova Receita</span>
-              <button
-                onClick={() => abrirModal('receita')}
-                style={{ width: 50, height: 50, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#22C55E,#16A34A)', color: '#fff', fontSize: 22, boxShadow: '0 6px 20px rgba(34,197,94,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >💰</button>
+              <button onClick={() => abrirModal('receita')} style={{ width: 50, height: 50, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#22C55E,#16A34A)', color: '#fff', fontSize: 22, boxShadow: '0 6px 20px rgba(34,197,94,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>💰</button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, animation: 'fadeUp .2s ease' }}>
               <span style={{ background: cores.bgCard, color: cores.textoCorpo, fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans',sans-serif", padding: '6px 12px', borderRadius: 10, boxShadow: cores.sombra, whiteSpace: 'nowrap' }}>Nova Despesa</span>
-              <button
-                onClick={() => abrirModal('despesa')}
-                style={{ width: 50, height: 50, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#EF4444,#DC2626)', color: '#fff', fontSize: 22, boxShadow: '0 6px 20px rgba(239,68,68,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >💸</button>
+              <button onClick={() => abrirModal('despesa')} style={{ width: 50, height: 50, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#EF4444,#DC2626)', color: '#fff', fontSize: 22, boxShadow: '0 6px 20px rgba(239,68,68,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>💸</button>
             </div>
           </>
         )}
-
-        {/* Botão principal */}
-        <button
-          onClick={() => setFabAberto(v => !v)}
-          style={{ width: 54, height: 54, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#3B82F6,#1D4ED8)', color: '#fff', fontSize: 26, boxShadow: '0 6px 20px rgba(59,130,246,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: fabAberto ? 'rotate(45deg)' : 'rotate(0deg)', transition: 'transform .2s ease' }}
-        >+</button>
+        <button onClick={() => setFabAberto(v => !v)} style={{ width: 54, height: 54, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#3B82F6,#1D4ED8)', color: '#fff', fontSize: 26, boxShadow: '0 6px 20px rgba(59,130,246,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: fabAberto ? 'rotate(45deg)' : 'rotate(0deg)', transition: 'transform .2s ease' }}>+</button>
       </div>
 
       <style>{`
@@ -168,8 +169,22 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
         }
       `}</style>
 
+      {/* Modais receita/despesa */}
       {modalTipo === 'receita' && <ModalReceita idUsuario={idUsuario} receita={null} membros={membros} contas={contas} aoFechar={() => setModalTipo(null)} aoSalvar={() => { carregarDados(); setModalTipo(null); }} />}
       {modalTipo === 'despesa' && <ModalDespesa idUsuario={idUsuario} despesa={null} membros={membros} contas={contas} cartoes={cartoes} aoFechar={() => setModalTipo(null)} aoSalvar={() => { carregarDados(); setModalTipo(null); }} />}
+
+      {/* Modal excluir recorrente */}
+      {transacaoParaExcluir && (
+        <ModalExcluirRecorrente
+          transacao={transacaoParaExcluir}
+          onConfirmar={async (modo: ModoExclusao) => {
+            await excluirTransacao(transacaoParaExcluir, modo);
+            setTransacaoParaExcluir(null);
+            carregarDados();
+          }}
+          onCancelar={() => setTransacaoParaExcluir(null)}
+        />
+      )}
     </div>
   );
 }
