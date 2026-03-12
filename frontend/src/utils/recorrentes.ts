@@ -33,7 +33,7 @@ export async function criarTransacoesRecorrentesMes(
         .eq('tipo', recorrente.tipo)
         .gte('data', dataInicio)
         .lte('data', dataFim)
-        .single();
+        .maybeSingle();
 
       if (!jaExiste) {
         const diaOriginal = parseInt(recorrente.data.split('-')[2]);
