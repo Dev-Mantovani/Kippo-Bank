@@ -6,8 +6,11 @@ import { useTema } from '../../contexts/TemaContexto';
 import ModalReceita from '../Receitas/ReceitaModal';
 import ModalDespesa from '../Despesas/DespesaModal';
 import { ModalExcluirRecorrente } from '../../components/ModalExcluirRecorrente/ModalExcluirRecorrente';
+import { ModalEditarRecorrente } from '../../components/ModalEditarRecorrente/ModalEditarRecorrente';
 import { excluirTransacao, eTransacaoOriginal } from '../../utils/excluirTransacao';
+import { editarTransacao } from '../../utils/editarTransacao';
 import type { ModoExclusao } from '../../utils/excluirTransacao';
+import type { ModoEdicao } from '../../utils/editarTransacao';
 import type { Transacao, MembroFamilia, Conta, Cartao } from '../../types';
 
 interface Props { idUsuario: string; mesAtual: number; anoAtual: number; aoMudarMes: (m: number, a: number) => void; }
@@ -29,20 +32,25 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
   const [modalTipo, setModalTipo] = useState<'receita' | 'despesa' | null>(null);
   const [fabAberto, setFabAberto] = useState(false);
   const [carregando, setCarregando] = useState(true);
-  const [transacaoParaExcluir, setTransacaoParaExcluir] = useState<Transacao | null>(null);
 
-  const fmtMes = (m: number, a: number) => `${NOMES_MESES[m - 1].slice(0, 3).toLowerCase()}/${String(a).slice(2)}`;
-  const mesAntN = mesAtual === 1 ? 12 : mesAtual - 1;
-  const mesProxN = mesAtual === 12 ? 1 : mesAtual + 1;
-  const anoAnt = mesAtual === 1 ? anoAtual - 1 : anoAtual;
-  const anoProx = mesAtual === 12 ? anoAtual + 1 : anoAtual;
+  // Estados de edição
+  const [transacaoParaEditar, setTransacaoParaEditar] = useState<Transacao | null>(null);
+  // Quando a edição é recorrente: guarda o payload pendente e aguarda escolha do modo
+  const [payloadPendente, setPayloadPendente] = useState<Record<string, unknown> | null>(null);
+
+  // Estados de exclusão
+  const [transacaoParaExcluir, setTransacaoParaExcluir] = useState<Transacao | null>(null);
 
   useEffect(() => { carregarDados(); }, [idUsuario, mesAtual, anoAtual]);
 
-  const carregarDados = async () => {
+  const carregarDados = async (skipRecorrentes = false) => {
     setCarregando(true);
     const { dataInicioStr, dataFimStr } = obterPeriodoMes(anoAtual, mesAtual);
-    await criarTransacoesRecorrentesMes(idUsuario, anoAtual, mesAtual);
+    // Só cria recorrentes na carga inicial do mês — não após edições/exclusões
+    // para evitar que o template do mês anterior crie duplicatas
+    if (!skipRecorrentes) {
+      await criarTransacoesRecorrentesMes(idUsuario, anoAtual, mesAtual);
+    }
     const [resT, resM, resC, resCa] = await Promise.all([
       supabase.from('transactions').select('*, membro:family_members(*)').eq('user_id', idUsuario).gte('data', dataInicioStr).lte('data', dataFimStr).order('data', { ascending: false }),
       supabase.from('family_members').select('*').eq('user_id', idUsuario),
@@ -56,38 +64,72 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
     setCarregando(false);
   };
 
+  // ── Edição ────────────────────────────────────────────────────────────────
+
+  const fecharEdicao = () => {
+    setTransacaoParaEditar(null);
+    setPayloadPendente(null);
+  };
+
+  // Chamado pelos modais quando a transação é recorrente
+  const handleSalvarPayload = async (payload: Record<string, unknown>) => {
+    // Fecha o modal de edição e abre a escolha de modo
+    setPayloadPendente(payload);
+    // Mantém transacaoParaEditar para o ModalEditarRecorrente ter acesso ao título etc.
+    setModalTipo(null);
+  };
+
+  // Confirmação do modo de edição (apenas_esta | todas)
+  const handleConfirmarEdicao = async (modo: ModoEdicao) => {
+    if (!transacaoParaEditar || !payloadPendente) return;
+    await editarTransacao(transacaoParaEditar, payloadPendente, modo);
+    fecharEdicao();
+    carregarDados(true); // ← skip: edição não deve disparar criação de recorrentes
+  };
+
+  // ── Exclusão ──────────────────────────────────────────────────────────────
+
   const handleExcluir = async (transacao: Transacao) => {
     if (transacao.recorrente) {
       const eOriginal = await eTransacaoOriginal(transacao);
       if (eOriginal) {
-        // Abre o modal para o usuário escolher
         setTransacaoParaExcluir(transacao);
         return;
       }
     }
-    // Não é recorrente ou não é o original → confirma e deleta direto
     if (!window.confirm('Excluir esta transação?')) return;
     await excluirTransacao(transacao, 'apenas_esta');
-    carregarDados();
+    carregarDados(true); // ← skip
   };
 
-  const filtradas = transacoes.filter(t => (filtro === 'todos' || t.tipo === filtro) && t.titulo.toLowerCase().includes(busca.toLowerCase()));
+  // ── Renderização ──────────────────────────────────────────────────────────
+
+  const filtradas = transacoes.filter(t =>
+    (filtro === 'todos' || t.tipo === filtro) &&
+    t.titulo.toLowerCase().includes(busca.toLowerCase())
+  );
   const grupos: Record<string, Transacao[]> = {};
   filtradas.forEach(t => { (grupos[t.data] ??= []).push(t); });
 
-  const fmtGrupo = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const fmtGrupo = (d: string) =>
+    new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   const card = { background: cores.bgCard, borderRadius: 18, border: `1px solid ${cores.borda}`, boxShadow: cores.sombra, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 };
 
-  const abrirModal = (tipo: 'receita' | 'despesa') => {
-    setModalTipo(tipo);
-    setFabAberto(false);
-  };
+  const abrirModal = (tipo: 'receita' | 'despesa') => { setModalTipo(tipo); setFabAberto(false); };
+
+  // Modal de edição ativo?
+  const modalEdicaoAtivo =
+    transacaoParaEditar && !payloadPendente && (
+      modalTipo === transacaoParaEditar.tipo ||
+      // caso o tipo tenha sido setado antes do transacaoParaEditar
+      transacaoParaEditar != null
+    );
 
   return (
     <div style={{ background: cores.bgPrimario, minHeight: '100vh', transition: 'background .3s' }}>
       <div style={{ padding: '16px 16px 0' }}>
-        {/* Filtro tipo */}
+        {/* Filtros */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           {(['todos', 'receita', 'despesa'] as const).map(f => (
             <button key={f} onClick={() => setFiltro(f)} style={{ padding: '7px 16px', borderRadius: 99, border: 'none', cursor: 'pointer', background: filtro === f ? cores.azulPrimario : cores.bgTerciario, color: filtro === f ? '#fff' : cores.textoSutil, fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans',sans-serif", transition: 'all .2s' }}>
@@ -117,7 +159,7 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
         ) : (
           Object.entries(grupos).map(([data, items]) => (
             <div key={data}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif", margin: '16px 0 8px', textTransform: 'capitalize', textDecoration: 'none' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif", margin: '16px 0 8px', textTransform: 'capitalize' }}>
                 {fmtGrupo(data)}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -127,16 +169,31 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
                       {ICONES[t.categoria] ?? (t.tipo === 'receita' ? '💰' : '💸')}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: cores.textoTitulo, fontFamily: "'DM Sans',sans-serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.titulo}{t.recorrente ? ' 🔄' : ''}</div>
-                      <div style={{ fontSize: 12, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif", marginTop: 2 }}>{t.membro?.nome ?? '—'}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: cores.textoTitulo, fontFamily: "'DM Sans',sans-serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {t.titulo}{t.recorrente ? ' 🔄' : ''}
+                      </div>
+                      <div style={{ fontSize: 12, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif", marginTop: 2 }}>
+                        {t.membro?.nome ?? '—'}
+                      </div>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 800, color: t.tipo === 'receita' ? cores.verdeTexto : cores.vermelhoTexto, fontFamily: "'DM Sans',sans-serif" }}>
                         {t.tipo === 'receita' ? '+' : '-'}R$ {fmt(t.valor)}
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: (t.status === 'recebido' || t.status === 'pago') ? cores.verdeTexto : cores.amareloTexto, background: (t.status === 'recebido' || t.status === 'pago') ? cores.verdeFundo : cores.amareloFundo, padding: '2px 8px', borderRadius: 99, fontFamily: "'DM Sans',sans-serif", marginTop: 2, display: 'inline-block' }}>{t.status}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: (t.status === 'recebido' || t.status === 'pago') ? cores.verdeTexto : cores.amareloTexto, background: (t.status === 'recebido' || t.status === 'pago') ? cores.verdeFundo : cores.amareloFundo, padding: '2px 8px', borderRadius: 99, fontFamily: "'DM Sans',sans-serif", marginTop: 2, display: 'inline-block' }}>
+                        {t.status}
+                      </span>
                     </div>
-                    <button onClick={() => handleExcluir(t)} style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: cores.vermelhFundo, cursor: 'pointer', fontSize: 13, flexShrink: 0 }}>🗑️</button>
+                    {/* Botão editar */}
+                    <button
+                      onClick={() => setTransacaoParaEditar(t)}
+                      style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: cores.bgTerciario, cursor: 'pointer', fontSize: 13, flexShrink: 0 }}
+                    >✏️</button>
+                    {/* Botão excluir */}
+                    <button
+                      onClick={() => handleExcluir(t)}
+                      style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: cores.vermelhFundo, cursor: 'pointer', fontSize: 13, flexShrink: 0 }}
+                    >🗑️</button>
                   </div>
                 ))}
               </div>
@@ -145,7 +202,7 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
         )}
       </div>
 
-      {/* FAB com dois botões */}
+      {/* FAB */}
       <div style={{ position: 'fixed', bottom: 90, right: 'calc(50% - 215px + 16px)', zIndex: 50, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>
         {fabAberto && (
           <>
@@ -163,24 +220,78 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
       </div>
 
       <style>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
-      {/* Modais receita/despesa */}
-      {modalTipo === 'receita' && <ModalReceita idUsuario={idUsuario} receita={null} membros={membros} contas={contas} aoFechar={() => setModalTipo(null)} aoSalvar={() => { carregarDados(); setModalTipo(null); }} />}
-      {modalTipo === 'despesa' && <ModalDespesa idUsuario={idUsuario} despesa={null} membros={membros} contas={contas} cartoes={cartoes} aoFechar={() => setModalTipo(null)} aoSalvar={() => { carregarDados(); setModalTipo(null); }} />}
+      {/* ── Modal nova receita (FAB) ── */}
+      {modalTipo === 'receita' && !transacaoParaEditar && (
+        <ModalReceita
+          idUsuario={idUsuario}
+          receita={null}
+          membros={membros}
+          contas={contas}
+          aoFechar={() => setModalTipo(null)}
+          aoSalvar={() => { carregarDados(); setModalTipo(null); }}
+        />
+      )}
 
-      {/* Modal excluir recorrente */}
+      {/* ── Modal nova despesa (FAB) ── */}
+      {modalTipo === 'despesa' && !transacaoParaEditar && (
+        <ModalDespesa
+          idUsuario={idUsuario}
+          despesa={null}
+          membros={membros}
+          contas={contas}
+          cartoes={cartoes}
+          aoFechar={() => setModalTipo(null)}
+          aoSalvar={() => { carregarDados(); setModalTipo(null); }}
+        />
+      )}
+
+      {/* ── Modal editar receita ── */}
+      {transacaoParaEditar?.tipo === 'receita' && !payloadPendente && (
+        <ModalReceita
+          idUsuario={idUsuario}
+          receita={transacaoParaEditar}
+          membros={membros}
+          contas={contas}
+          aoFechar={fecharEdicao}
+          aoSalvar={() => { carregarDados(true); fecharEdicao(); }}
+          aoSalvarPayload={handleSalvarPayload}
+        />
+      )}
+
+      {/* ── Modal editar despesa ── */}
+      {transacaoParaEditar?.tipo === 'despesa' && !payloadPendente && (
+        <ModalDespesa
+          idUsuario={idUsuario}
+          despesa={transacaoParaEditar}
+          membros={membros}
+          contas={contas}
+          cartoes={cartoes}
+          aoFechar={fecharEdicao}
+          aoSalvar={() => { carregarDados(true); fecharEdicao(); }}
+          aoSalvarPayload={handleSalvarPayload}
+        />
+      )}
+
+      {/* ── Modal escolha de modo (editar recorrente) ── */}
+      {transacaoParaEditar && payloadPendente && (
+        <ModalEditarRecorrente
+          transacao={transacaoParaEditar}
+          onConfirmar={handleConfirmarEdicao}
+          onCancelar={fecharEdicao}
+        />
+      )}
+
+      {/* ── Modal excluir recorrente ── */}
       {transacaoParaExcluir && (
         <ModalExcluirRecorrente
           transacao={transacaoParaExcluir}
           onConfirmar={async (modo: ModoExclusao) => {
             await excluirTransacao(transacaoParaExcluir, modo);
             setTransacaoParaExcluir(null);
-            carregarDados();
+            carregarDados(true); // ← skip
           }}
           onCancelar={() => setTransacaoParaExcluir(null)}
         />
