@@ -5,7 +5,7 @@ import { useTamanhoTela } from './hooks/useTamanhoTela';
 
 import Sidebar from './components/Sidebar/Sidebar';
 import HeaderGlobal from './components/HeaderGlobal/HeaderGlobal';
-import NavegacaoInferior from './components/BottomNav/BottomNav';
+import MobileSidebar from './components/MobileSidebar/MobileSidebar';
 import TelaDeCarga from './components/LoadingScreen/LoadingScreen';
 import PaginaDashboard from './pages/Dashboard/DashboardPage';
 import PaginaTransacoes from './pages/Transacoes/TransacoesPage';
@@ -21,15 +21,18 @@ type Tela = 'dashboard' | 'transacoes' | 'relatorios' | 'membros';
 function AppInterno() {
   const { cores, tema, alternarTema } = useTema();
   const { ehDesktop } = useTamanhoTela();
-  const [usuarioAtual, setUsuarioAtual] = useState<Usuario | null>(null);
-  const [carregando, setCarregando] = useState(true);
-  const [mostrarOnboarding, setMostrarOnboarding] = useState(false);
-  const [telaAtiva, setTelaAtiva] = useState<Tela>('dashboard');
-  const [mesAtual, setMesAtual] = useState(new Date().getMonth() + 1);
-  const [anoAtual, setAnoAtual] = useState(new Date().getFullYear());
-  const [visivel, setVisivel] = useState(true);
-  const [atualizando, setAtualizando] = useState(false);
-const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [usuarioAtual,       setUsuarioAtual]       = useState<Usuario | null>(null);
+  const [carregando,         setCarregando]         = useState(true);
+  const [mostrarOnboarding,  setMostrarOnboarding]  = useState(false);
+  const [telaAtiva,          setTelaAtiva]          = useState<Tela>('dashboard');
+  const [mesAtual,           setMesAtual]           = useState(new Date().getMonth() + 1);
+  const [anoAtual,           setAnoAtual]           = useState(new Date().getFullYear());
+  const [visivel,            setVisivel]            = useState(true);
+  const [atualizando,        setAtualizando]        = useState(false);
+  const [menuMobileAberto,   setMenuMobileAberto]   = useState(false);
+
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     verificarUsuario();
@@ -44,62 +47,83 @@ const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     try {
       const { data: { session: sessao } } = await supabase.auth.getSession();
       if (!sessao?.user) { setUsuarioAtual(null); return; }
-      const { data: perfil } = await supabase.from('users_profile').select('nome, onboarding_completed').eq('id', sessao.user.id).maybeSingle();
+      const { data: perfil } = await supabase
+        .from('users_profile')
+        .select('nome, onboarding_completed')
+        .eq('id', sessao.user.id)
+        .maybeSingle();
       setUsuarioAtual({ id: sessao.user.id, email: sessao.user.email!, nome: perfil?.nome });
       if (!perfil?.onboarding_completed) setMostrarOnboarding(true);
-    } catch (e) { console.error(e); setUsuarioAtual(null); }
-    finally { setCarregando(false); }
+    } catch (e) {
+      console.error(e);
+      setUsuarioAtual(null);
+    } finally {
+      setCarregando(false);
+    }
   };
 
-  const fazerLogout = async () => { await supabase.auth.signOut(); setUsuarioAtual(null); setMostrarOnboarding(false); };
+  const fazerLogout = async () => {
+    await supabase.auth.signOut();
+    setUsuarioAtual(null);
+    setMostrarOnboarding(false);
+    setMenuMobileAberto(false);
+  };
 
   const trocarMes = (novoMes: number, novoAno: number) => {
-  if (atualizando) return;
+    if (atualizando) return;
+    setAtualizando(true);
+    setVisivel(false);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      setMesAtual(novoMes);
+      setAnoAtual(novoAno);
+      setVisivel(true);
+      setAtualizando(false);
+    }, 180);
+  };
 
-  setAtualizando(true);
-  setVisivel(false);
+  const irMesAnterior = () =>
+    trocarMes(
+      mesAtual === 1 ? 12 : mesAtual - 1,
+      mesAtual === 1 ? anoAtual - 1 : anoAtual,
+    );
 
-  if (timerRef.current) clearTimeout(timerRef.current);
+  const irProximoMes = () =>
+    trocarMes(
+      mesAtual === 12 ? 1 : mesAtual + 1,
+      mesAtual === 12 ? anoAtual + 1 : anoAtual,
+    );
 
-  timerRef.current = setTimeout(() => {
-    setMesAtual(novoMes);
-    setAnoAtual(novoAno);
-    setVisivel(true);
-    setAtualizando(false);
-  }, 180);
-};
+  const mudarTela = (tela: Tela) => {
+    if (tela === telaAtiva) return;
+    setVisivel(false);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      setTelaAtiva(tela);
+      setVisivel(true);
+    }, 150);
+  };
 
-const irMesAnterior = () =>
-  trocarMes(
-    mesAtual === 1 ? 12 : mesAtual - 1,
-    mesAtual === 1 ? anoAtual - 1 : anoAtual
+  if (carregando)        return <TelaDeCarga />;
+  if (!usuarioAtual)     return <PaginaAutenticacao aoAutenticar={verificarUsuario} />;
+  if (mostrarOnboarding) return (
+    <PaginaOnboarding
+      idUsuario={usuarioAtual.id}
+      aoConcluir={() => { setMostrarOnboarding(false); verificarUsuario(); }}
+    />
   );
 
-const irProximoMes = () =>
-  trocarMes(
-    mesAtual === 12 ? 1 : mesAtual + 1,
-    mesAtual === 12 ? anoAtual + 1 : anoAtual
-  );
-
-const mudarTela = (tela: Tela) => {
-  if (tela === telaAtiva) return;
-
-  setVisivel(false);
-
-  if (timerRef.current) clearTimeout(timerRef.current);
-
-  timerRef.current = setTimeout(() => {
-    setTelaAtiva(tela);
-    setVisivel(true);
-  }, 150);
-};
-
-  if (carregando) return <TelaDeCarga />;
-  if (!usuarioAtual) return <PaginaAutenticacao aoAutenticar={verificarUsuario} />;
-  if (mostrarOnboarding) return <PaginaOnboarding idUsuario={usuarioAtual.id} aoConcluir={() => { setMostrarOnboarding(false); verificarUsuario(); }} />;
-
-  // Altura do topbar mobile
+  // Altura do header no mobile (com ou sem seletor de meses)
   const HEADER_H_MOBILE = telaAtiva === 'membros' || telaAtiva === 'relatorios' ? 80 : 130;
+
+  const conteudo = (
+    <>
+      {telaAtiva === 'dashboard'  && <PaginaDashboard  idUsuario={usuarioAtual.id} mesAtual={mesAtual} anoAtual={anoAtual} />}
+      {telaAtiva === 'transacoes' && <PaginaTransacoes idUsuario={usuarioAtual.id} mesAtual={mesAtual} anoAtual={anoAtual} aoMudarMes={trocarMes} />}
+      {telaAtiva === 'relatorios' && <PaginaRelatorios idUsuario={usuarioAtual.id} mesAtual={mesAtual} anoAtual={anoAtual} />}
+      {telaAtiva === 'membros'    && <PaginaMembros    idUsuario={usuarioAtual.id} />}
+    </>
+  );
 
   return (
     <div style={{
@@ -110,7 +134,7 @@ const mudarTela = (tela: Tela) => {
     }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-      {/* ── DESKTOP: Sidebar esquerda + topbar ── */}
+      {/* ── DESKTOP ─────────────────────────────────────────── */}
       {ehDesktop && (
         <>
           <Sidebar
@@ -130,7 +154,6 @@ const mudarTela = (tela: Tela) => {
             aoSair={fazerLogout}
             mostrarMeses={telaAtiva !== 'membros'}
           />
-          {/* Conteúdo desktop: respeitando sidebar (60px) + topbar (64px) */}
           <div style={{
             marginLeft: 60,
             paddingTop: 64,
@@ -139,17 +162,16 @@ const mudarTela = (tela: Tela) => {
             transform: visivel ? 'translateY(0)' : 'translateY(4px)',
             transition: 'opacity .2s ease, transform .2s ease',
           }}>
-            {telaAtiva === 'dashboard'  && <PaginaDashboard  idUsuario={usuarioAtual.id} mesAtual={mesAtual} anoAtual={anoAtual} />}
-            {telaAtiva === 'transacoes' && <PaginaTransacoes idUsuario={usuarioAtual.id} mesAtual={mesAtual} anoAtual={anoAtual} aoMudarMes={trocarMes} />}
-            {telaAtiva === 'relatorios' && <PaginaRelatorios idUsuario={usuarioAtual.id} mesAtual={mesAtual} anoAtual={anoAtual} />}
-            {telaAtiva === 'membros'    && <PaginaMembros    idUsuario={usuarioAtual.id} />}
+            {conteudo}
           </div>
         </>
       )}
 
-      {/* ── MOBILE: Header topo + nav inferior ── */}
+      {/* ── MOBILE ──────────────────────────────────────────── */}
       {!ehDesktop && (
         <div style={{ maxWidth: 430, margin: '0 auto', minHeight: '100vh', position: 'relative' }}>
+
+          {/* Header com hamburguer */}
           <HeaderGlobal
             nomeUsuario={usuarioAtual.nome}
             mesAtual={mesAtual}
@@ -158,20 +180,29 @@ const mudarTela = (tela: Tela) => {
             aoProximoMes={irProximoMes}
             aoSair={fazerLogout}
             mostrarMeses={telaAtiva !== 'membros'}
+            aoAbrirMenu={() => setMenuMobileAberto(true)}
           />
+
+          {/* Conteúdo da página */}
           <div style={{
             paddingTop: HEADER_H_MOBILE,
-            paddingBottom: 80,
+            paddingBottom: 28,
             opacity: visivel ? 1 : 0,
             transform: visivel ? 'translateY(0)' : 'translateY(4px)',
             transition: 'opacity .2s ease, transform .2s ease',
           }}>
-            {telaAtiva === 'dashboard'  && <PaginaDashboard  idUsuario={usuarioAtual.id} mesAtual={mesAtual} anoAtual={anoAtual} />}
-            {telaAtiva === 'transacoes' && <PaginaTransacoes idUsuario={usuarioAtual.id} mesAtual={mesAtual} anoAtual={anoAtual} aoMudarMes={trocarMes} />}
-            {telaAtiva === 'relatorios' && <PaginaRelatorios idUsuario={usuarioAtual.id} mesAtual={mesAtual} anoAtual={anoAtual} />}
-            {telaAtiva === 'membros'    && <PaginaMembros    idUsuario={usuarioAtual.id} />}
+            {conteudo}
           </div>
-          <NavegacaoInferior telaAtiva={telaAtiva} definirTela={mudarTela} />
+
+          {/* Sidebar deslizante mobile */}
+          <MobileSidebar
+            aberto={menuMobileAberto}
+            telaAtiva={telaAtiva}
+            definirTela={mudarTela}
+            nomeUsuario={usuarioAtual.nome}
+            aoFechar={() => setMenuMobileAberto(false)}
+            aoSair={fazerLogout}
+          />
         </div>
       )}
     </div>
