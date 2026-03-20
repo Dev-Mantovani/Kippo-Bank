@@ -12,7 +12,6 @@ interface Props { idUsuario: string; mesAtual: number; anoAtual: number; }
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
-// ─── Tipos internos ───────────────────────────────────────────────
 interface FaturaInfo {
   total:     number;
   status:    'aberta' | 'paga';
@@ -21,16 +20,97 @@ interface FaturaInfo {
   invoiceId: string | null;
 }
 
-// ─── Componentes auxiliares ───────────────────────────────────────
-
-function Secao({ titulo, cores, aoAdicionar }: { titulo: string; cores: any; aoAdicionar?: () => void }) {
+// ─── Ícone chevron animado ────────────────────────────────────────
+function IconChevron({ aberto }: { aberto: boolean }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-      <div style={{ fontSize: 17, fontWeight: 700, color: cores.textoTitulo, fontFamily: "'DM Sans',sans-serif" }}>{titulo}</div>
+    <svg
+      width="16" height="16" fill="none" stroke="currentColor"
+      strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+      viewBox="0 0 24 24"
+      style={{
+        transition: 'transform .28s cubic-bezier(.4,0,.2,1)',
+        transform: aberto ? 'rotate(180deg)' : 'rotate(0deg)',
+        flexShrink: 0,
+      }}
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
+// ─── Seção com toggle de colapso ─────────────────────────────────
+interface SecaoProps {
+  titulo: string;
+  cores: any;
+  aoAdicionar?: () => void;
+  colapsavel?: boolean;
+  aberto?: boolean;
+  onToggle?: () => void;
+  contador?: number;
+  resumoColapsado?: React.ReactNode;
+}
+
+function Secao({ titulo, cores, aoAdicionar, colapsavel, aberto, onToggle, contador, resumoColapsado }: SecaoProps) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8,
+      marginBottom: 12,
+    }}>
+      {colapsavel ? (
+        <button
+          onClick={onToggle}
+          style={{
+            flex: 1, display: 'flex', alignItems: 'center', gap: 8,
+            border: 'none', background: 'transparent', cursor: 'pointer',
+            padding: '2px 0', textAlign: 'left', minWidth: 0,
+          }}
+        >
+          {/* Título */}
+          <span style={{ fontSize: 17, fontWeight: 700, color: cores.textoTitulo, fontFamily: "'DM Sans',sans-serif", flexShrink: 0 }}>
+            {titulo}
+          </span>
+
+          {/* Badge contador */}
+          {typeof contador === 'number' && contador > 0 && (
+            <span style={{
+              fontSize: 11, fontWeight: 700, color: cores.azulPrimario,
+              background: cores.azulFundo, padding: '2px 8px',
+              borderRadius: 99, fontFamily: "'DM Sans',sans-serif", flexShrink: 0,
+            }}>
+              {contador}
+            </span>
+          )}
+
+          {/* Resumo quando colapsado */}
+          {!aberto && resumoColapsado && (
+            <span style={{ minWidth: 0, overflow: 'hidden' }}>{resumoColapsado}</span>
+          )}
+
+          {/* Espaçador + chevron */}
+          <span style={{ flex: 1 }} />
+          <span style={{ color: cores.textoSutil, display: 'flex', alignItems: 'center' }}>
+            <IconChevron aberto={aberto ?? true} />
+          </span>
+        </button>
+      ) : (
+        <div style={{ flex: 1, fontSize: 17, fontWeight: 700, color: cores.textoTitulo, fontFamily: "'DM Sans',sans-serif" }}>
+          {titulo}
+        </div>
+      )}
+
+      {/* Botão + */}
       {aoAdicionar && (
-        <button onClick={aoAdicionar} style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: cores.azulFundo, color: cores.azulPrimario, fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all .15s' }}
+        <button
+          onClick={aoAdicionar}
+          style={{
+            width: 32, height: 32, borderRadius: 10, border: 'none',
+            background: cores.azulFundo, color: cores.azulPrimario,
+            fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', flexShrink: 0, transition: 'all .15s',
+          }}
           onMouseEnter={e => e.currentTarget.style.background = cores.azulPrimario + '33'}
-          onMouseLeave={e => e.currentTarget.style.background = cores.azulFundo}>
+          onMouseLeave={e => e.currentTarget.style.background = cores.azulFundo}
+        >
           +
         </button>
       )}
@@ -38,12 +118,15 @@ function Secao({ titulo, cores, aoAdicionar }: { titulo: string; cores: any; aoA
   );
 }
 
-function EmptyState({ icone, texto, acao, rotuloBotao, cores }: { icone: string; texto: string; acao: () => void; rotuloBotao: string; cores: any }) {
+// ─── Empty State ──────────────────────────────────────────────────
+function EmptyState({ icone, texto, acao, rotuloBotao, cores }: {
+  icone: string; texto: string; acao: () => void; rotuloBotao: string; cores: any;
+}) {
   return (
     <div style={{ background: cores.bgCard, borderRadius: 20, border: `1px solid ${cores.borda}`, padding: '28px 20px', textAlign: 'center', marginBottom: 24, boxShadow: cores.sombra }}>
       <div style={{ fontSize: 36, marginBottom: 10 }}>{icone}</div>
       <div style={{ fontSize: 14, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif", marginBottom: 14 }}>{texto}</div>
-      <button onClick={acao} style={{ padding: '10px 22px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", boxShadow: '0 4px 14px rgba(59,130,246,.4)', transition: 'opacity .2s' }}>
+      <button onClick={acao} style={{ padding: '10px 22px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", boxShadow: '0 4px 14px rgba(59,130,246,.4)' }}>
         + {rotuloBotao}
       </button>
     </div>
@@ -69,15 +152,15 @@ function BadgeStatus({ status, cores }: { status: string; cores: any }) {
   );
 }
 
-// ─── Componente do cartão com fatura dinâmica ─────────────────────
+// ─── Card de cartão ───────────────────────────────────────────────
 interface CartaoCardProps {
-  cartao:          Cartao;
-  fatura:          FaturaInfo | null;
-  cores:           any;
-  onEditar:        () => void;
-  onExcluir:       () => void;
-  onMarcarPaga:    (cartaoId: string, invoiceId: string | null) => void;
-  marcandoPago:    boolean;
+  cartao: Cartao;
+  fatura: FaturaInfo | null;
+  cores: any;
+  onEditar: () => void;
+  onExcluir: () => void;
+  onMarcarPaga: (cartaoId: string, invoiceId: string | null) => void;
+  marcandoPago: boolean;
 }
 
 function CartaoCard({ cartao, fatura, cores, onEditar, onExcluir, onMarcarPaga, marcandoPago }: CartaoCardProps) {
@@ -85,11 +168,10 @@ function CartaoCard({ cartao, fatura, cores, onEditar, onExcluir, onMarcarPaga, 
 
   const pct = Math.min((fatura.total / cartao.limite) * 100, 100);
   const corBarra = pct > 80 ? '#EF4444' : pct > 50 ? '#F59E0B' : '#22C55E';
-  const fatPaga  = fatura.status === 'paga';
+  const fatPaga = fatura.status === 'paga';
 
   return (
     <div style={{ background: cores.bgCard, borderRadius: 20, border: `1px solid ${fatPaga ? '#22C55E44' : cores.borda}`, boxShadow: cores.sombra, padding: 16, transition: 'border-color .3s' }}>
-      {/* Linha topo: avatar + nome + ações */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
         <div style={{ width: 44, height: 44, borderRadius: 14, background: cartao.cor || '#1A1A2E', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 13, fontFamily: "'DM Sans',sans-serif", flexShrink: 0 }}>
           {cartao.nome.slice(0, 2).toUpperCase()}
@@ -98,27 +180,22 @@ function CartaoCard({ cartao, fatura, cores, onEditar, onExcluir, onMarcarPaga, 
           <div style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif" }}>Cartão de crédito</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: cores.textoTitulo, fontFamily: "'DM Sans',sans-serif" }}>{cartao.nome}</div>
         </div>
-
-        {/* Badge status fatura */}
         <div style={{ padding: '4px 10px', borderRadius: 99, background: fatPaga ? cores.verdeFundo : fatura.jaFechou ? cores.amareloFundo : cores.bgTerciario, border: `1px solid ${fatPaga ? '#22C55E55' : fatura.jaFechou ? '#F59E0B55' : cores.borda}` }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: fatPaga ? cores.verdeTexto : fatura.jaFechou ? cores.amareloTexto : cores.textoSutil, fontFamily: "'DM Sans',sans-serif" }}>
             {fatPaga ? '✅ Paga' : fatura.jaFechou ? '🔔 Fechada' : '🔓 Aberta'}
           </span>
         </div>
-
         <div style={{ display: 'flex', gap: 6 }}>
-          <BtnAcao icone="✏️" onClick={onEditar}  bg={cores.bgTerciario} />
+          <BtnAcao icone="✏️" onClick={onEditar} bg={cores.bgTerciario} />
           <BtnAcao icone="🗑️" onClick={onExcluir} bg={cores.vermelhFundo} />
         </div>
       </div>
 
-      {/* Período de fatura */}
-      <div style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif", marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-        📅 Período: <span style={{ fontWeight: 600, color: cores.textoCorpo }}>{fatura.periodo}</span>
-        {cartao.fechamento_dia && <span style={{ color: cores.textoSutil }}> • Fecha dia {cartao.fechamento_dia}</span>}
+      <div style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif", marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        📅 <span style={{ fontWeight: 600, color: cores.textoCorpo }}>{fatura.periodo}</span>
+        {cartao.fechamento_dia && <span> • Fecha dia {cartao.fechamento_dia}</span>}
       </div>
 
-      {/* Valores */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
         <div>
           <div style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif" }}>Fatura do período</div>
@@ -134,38 +211,23 @@ function CartaoCard({ cartao, fatura, cores, onEditar, onExcluir, onMarcarPaga, 
         </div>
       </div>
 
-      {/* Barra de uso */}
       <div style={{ height: 8, background: cores.bgTerciario, borderRadius: 99, overflow: 'hidden', marginBottom: 8 }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: fatPaga ? `linear-gradient(90deg,#22C55E,#4ADE80)` : `linear-gradient(90deg,${corBarra},${corBarra}bb)`, borderRadius: 99, transition: 'width .5s ease' }} />
+        <div style={{ width: `${pct}%`, height: '100%', background: fatPaga ? 'linear-gradient(90deg,#22C55E,#4ADE80)' : `linear-gradient(90deg,${corBarra},${corBarra}bb)`, borderRadius: 99, transition: 'width .5s ease' }} />
       </div>
       <div style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif", textAlign: 'right', marginBottom: fatura.jaFechou && !fatPaga ? 14 : 0 }}>
         {pct.toFixed(0)}% do limite (R$ {fmt(cartao.limite)})
       </div>
 
-      {/* Botão Marcar como Paga — só aparece quando fatura fechou e ainda não foi paga */}
       {fatura.jaFechou && !fatPaga && fatura.total > 0 && (
         <button
           onClick={() => onMarcarPaga(cartao.id, fatura.invoiceId)}
           disabled={marcandoPago}
-          style={{
-            width: '100%', padding: '13px', borderRadius: 14, border: 'none',
-            cursor: marcandoPago ? 'not-allowed' : 'pointer',
-            background: marcandoPago ? cores.bgTerciario : 'linear-gradient(135deg,#22C55E,#16A34A)',
-            color: marcandoPago ? cores.textoSutil : '#fff',
-            fontSize: 14, fontWeight: 800,
-            fontFamily: "'DM Sans',sans-serif",
-            boxShadow: marcandoPago ? 'none' : '0 4px 14px rgba(34,197,94,.4)',
-            transition: 'all .2s',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          }}
+          style={{ width: '100%', padding: '13px', borderRadius: 14, border: 'none', cursor: marcandoPago ? 'not-allowed' : 'pointer', background: marcandoPago ? cores.bgTerciario : 'linear-gradient(135deg,#22C55E,#16A34A)', color: marcandoPago ? cores.textoSutil : '#fff', fontSize: 14, fontWeight: 800, fontFamily: "'DM Sans',sans-serif", boxShadow: marcandoPago ? 'none' : '0 4px 14px rgba(34,197,94,.4)', transition: 'all .2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
         >
-          {marcandoPago
-            ? '⏳ Salvando...'
-            : `✅ Marcar fatura como paga — R$ ${fmt(fatura.total)}`}
+          {marcandoPago ? '⏳ Salvando...' : `✅ Marcar fatura como paga — R$ ${fmt(fatura.total)}`}
         </button>
       )}
 
-      {/* Confirmação se já paga */}
       {fatPaga && (
         <div style={{ background: cores.verdeFundo, borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span>✅</span>
@@ -182,12 +244,17 @@ function CartaoCard({ cartao, fatura, cores, onEditar, onExcluir, onMarcarPaga, 
 export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props) {
   const { cores } = useTema();
 
-  const [transacoes,  setTransacoes]  = useState<Transacao[]>([]);
-  const [cartoes,     setCartoes]     = useState<Cartao[]>([]);
-  const [contas,      setContas]      = useState<Conta[]>([]);
-  const [faturas,     setFaturas]     = useState<Record<string, FaturaInfo>>({});
-  const [carregando,  setCarregando]  = useState(true);
-  const [marcandoPago, setMarcandoPago] = useState<string | null>(null); // card id
+  const [transacoes,   setTransacoes]   = useState<Transacao[]>([]);
+  const [cartoes,      setCartoes]      = useState<Cartao[]>([]);
+  const [contas,       setContas]       = useState<Conta[]>([]);
+  const [faturas,      setFaturas]      = useState<Record<string, FaturaInfo>>({});
+  const [carregando,   setCarregando]   = useState(true);
+  const [marcandoPago, setMarcandoPago] = useState<string | null>(null);
+
+  // ── Colapso das seções (aberto por padrão) ────────────────────
+  const [cartoesAberto,  setCartoesAberto]  = useState(true);
+  const [contasAberto,   setContasAberto]   = useState(true);
+  const [despesasAberto, setDespesasAberto] = useState(true);
 
   // Modais
   const [modalConta,     setModalConta]     = useState(false);
@@ -197,29 +264,20 @@ export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props
 
   useEffect(() => { carregarDados(); }, [idUsuario, mesAtual, anoAtual]);
 
-  // ── Calcula a fatura de um cartão para o período selecionado ────
   const calcularFatura = useCallback(async (cartao: Cartao): Promise<FaturaInfo> => {
     const periodo = obterPeriodoFatura(cartao.fechamento_dia ?? 10, mesAtual, anoAtual);
 
-    // Busca transações com este cartão no período de fatura
     const { data: txs } = await supabase
-      .from('transactions')
-      .select('valor')
-      .eq('user_id', idUsuario)
-      .eq('cartao_id', cartao.id)
+      .from('transactions').select('valor')
+      .eq('user_id', idUsuario).eq('cartao_id', cartao.id)
       .eq('tipo', 'despesa')
-      .gte('data', periodo.dataInicioStr)
-      .lte('data', periodo.dataFimStr);
+      .gte('data', periodo.dataInicioStr).lte('data', periodo.dataFimStr);
 
     const total = (txs ?? []).reduce((s, t) => s + t.valor, 0);
 
-    // Busca o status da fatura (aberta/paga) na tabela card_invoices
     const { data: invoice } = await supabase
-      .from('card_invoices')
-      .select('id, status')
-      .eq('card_id', cartao.id)
-      .eq('mes', mesAtual)
-      .eq('ano', anoAtual)
+      .from('card_invoices').select('id, status')
+      .eq('card_id', cartao.id).eq('mes', mesAtual).eq('ano', anoAtual)
       .maybeSingle();
 
     return {
@@ -231,7 +289,6 @@ export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props
     };
   }, [idUsuario, mesAtual, anoAtual]);
 
-  // ── Carregamento principal ──────────────────────────────────────
   const carregarDados = async () => {
     setCarregando(true);
     const { dataInicioStr, dataFimStr } = obterPeriodoMes(anoAtual, mesAtual);
@@ -249,69 +306,44 @@ export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props
     if (resC.data) setCartoes(resC.data);
     if (resA.data) setContas(resA.data);
 
-    // Calcula fatura de cada cartão paralelamente
     if (resC.data && resC.data.length > 0) {
-      const faturasPairs = await Promise.all(
-        resC.data.map(async (c) => ({ id: c.id, fatura: await calcularFatura(c) }))
-      );
-      const novasFaturas: Record<string, FaturaInfo> = {};
-      faturasPairs.forEach(p => { novasFaturas[p.id] = p.fatura; });
-      setFaturas(novasFaturas);
+      const pairs = await Promise.all(resC.data.map(async c => ({ id: c.id, fatura: await calcularFatura(c) })));
+      const mapa: Record<string, FaturaInfo> = {};
+      pairs.forEach(p => { mapa[p.id] = p.fatura; });
+      setFaturas(mapa);
     }
 
     setCarregando(false);
   };
 
-  // ── Marcar fatura como paga ─────────────────────────────────────
   const marcarFaturaPaga = async (cartaoId: string, invoiceId: string | null) => {
     setMarcandoPago(cartaoId);
     try {
       if (invoiceId) {
-        // Atualiza registro existente
-        await supabase
-          .from('card_invoices')
-          .update({ status: 'paga', pago_em: new Date().toISOString() })
-          .eq('id', invoiceId);
+        await supabase.from('card_invoices').update({ status: 'paga', pago_em: new Date().toISOString() }).eq('id', invoiceId);
       } else {
-        // Cria novo registro de fatura paga
-        await supabase
-          .from('card_invoices')
-          .insert({
-            user_id: idUsuario,
-            card_id: cartaoId,
-            mes:     mesAtual,
-            ano:     anoAtual,
-            status:  'paga',
-            pago_em: new Date().toISOString(),
-          });
+        await supabase.from('card_invoices').insert({ user_id: idUsuario, card_id: cartaoId, mes: mesAtual, ano: anoAtual, status: 'paga', pago_em: new Date().toISOString() });
       }
-      // Atualiza só a fatura deste cartão
       const cartao = cartoes.find(c => c.id === cartaoId);
       if (cartao) {
-        const novaFatura = await calcularFatura(cartao);
-        setFaturas(prev => ({ ...prev, [cartaoId]: novaFatura }));
+        const nova = await calcularFatura(cartao);
+        setFaturas(prev => ({ ...prev, [cartaoId]: nova }));
       }
     } finally {
       setMarcandoPago(null);
     }
   };
 
-  // ── Handlers de conta/cartão ────────────────────────────────────
-  const excluirConta = async (id: string) => {
-    if (!window.confirm('Excluir esta conta?')) return;
-    await supabase.from('accounts').delete().eq('id', id);
-    carregarDados();
-  };
-  const excluirCartao = async (id: string) => {
-    if (!window.confirm('Excluir este cartão? Todos os dados de fatura serão removidos.')) return;
-    await supabase.from('cards').delete().eq('id', id);
-    carregarDados();
-  };
+  const excluirConta   = async (id: string) => { if (!window.confirm('Excluir esta conta?')) return; await supabase.from('accounts').delete().eq('id', id); carregarDados(); };
+  const excluirCartao  = async (id: string) => { if (!window.confirm('Excluir este cartão?')) return; await supabase.from('cards').delete().eq('id', id); carregarDados(); };
 
-  // ── Totais do mês ───────────────────────────────────────────────
   const receitas = transacoes.filter(t => t.tipo === 'receita' && t.status === 'recebido').reduce((s, t) => s + t.valor, 0);
   const despesas = transacoes.filter(t => t.tipo === 'despesa' && t.status === 'pago').reduce((s, t) => s + t.valor, 0);
   const saldo    = receitas - despesas;
+
+  // Totais para resumo colapsado
+  const totalFaturas      = cartoes.reduce((s, c) => s + (faturas[c.id]?.total ?? 0), 0);
+  const totalSaldoContas  = contas.reduce((s, c) => s + c.saldo, 0);
 
   const card = { background: cores.bgCard, borderRadius: 20, border: `1px solid ${cores.borda}`, boxShadow: cores.sombra };
 
@@ -354,81 +386,245 @@ export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props
         </div>
 
         {/* ── CARTÕES ─────────────────────────────────────────── */}
-        <Secao titulo="Meus cartões" cores={cores} aoAdicionar={() => { setCartaoEditando(null); setModalCartao(true); }} />
-        {cartoes.length === 0 ? (
-          <EmptyState icone="💳" texto="Nenhum cartão cadastrado" acao={() => { setCartaoEditando(null); setModalCartao(true); }} rotuloBotao="Adicionar cartão" cores={cores} />
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
-            {cartoes.map(cartao => (
-              <CartaoCard
-                key={cartao.id}
-                cartao={cartao}
-                fatura={faturas[cartao.id] ?? null}
-                cores={cores}
-                onEditar={() => { setCartaoEditando(cartao); setModalCartao(true); }}
-                onExcluir={() => excluirCartao(cartao.id)}
-                onMarcarPaga={marcarFaturaPaga}
-                marcandoPago={marcandoPago === cartao.id}
-              />
-            ))}
+        <Secao
+          titulo="Meus cartões"
+          cores={cores}
+          aoAdicionar={() => { setCartaoEditando(null); setModalCartao(true); }}
+          colapsavel
+          aberto={cartoesAberto}
+          onToggle={() => setCartoesAberto(v => !v)}
+          contador={cartoes.length}
+          resumoColapsado={
+            cartoes.length > 0 ? (
+              <span style={{ fontSize: 13, fontWeight: 700, color: cores.vermelhoTexto, fontFamily: "'DM Sans',sans-serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                R$ {fmt(totalFaturas)} em faturas
+              </span>
+            ) : undefined
+          }
+        />
+
+        {/* Conteúdo dos cartões — animação de colapso */}
+        <div style={{
+          display: 'grid',
+          gridTemplateRows: cartoesAberto ? '1fr' : '0fr',
+          opacity: cartoesAberto ? 1 : 0,
+          transition: 'grid-template-rows .32s cubic-bezier(.4,0,.2,1), opacity .22s ease',
+        }}>
+          <div style={{ overflow: 'hidden' }}>
+            <div style={{ paddingBottom: cartoesAberto ? 0 : 0 }}>
+              {cartoes.length === 0 ? (
+                <EmptyState icone="💳" texto="Nenhum cartão cadastrado" acao={() => { setCartaoEditando(null); setModalCartao(true); }} rotuloBotao="Adicionar cartão" cores={cores} />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+                  {cartoes.map(cartao => (
+                    <CartaoCard
+                      key={cartao.id}
+                      cartao={cartao}
+                      fatura={faturas[cartao.id] ?? null}
+                      cores={cores}
+                      onEditar={() => { setCartaoEditando(cartao); setModalCartao(true); }}
+                      onExcluir={() => excluirCartao(cartao.id)}
+                      onMarcarPaga={marcarFaturaPaga}
+                      marcandoPago={marcandoPago === cartao.id}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </div>
+
+        {/* Separador quando cartões colapsados */}
+        {!cartoesAberto && <div style={{ height: 20 }} />}
 
         {/* ── CONTAS ──────────────────────────────────────────── */}
-        <Secao titulo="Minhas contas" cores={cores} aoAdicionar={() => { setContaEditando(null); setModalConta(true); }} />
-        {contas.length === 0 ? (
-          <EmptyState icone="🏦" texto="Nenhuma conta cadastrada" acao={() => { setContaEditando(null); setModalConta(true); }} rotuloBotao="Adicionar conta" cores={cores} />
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-            {contas.map(conta => (
-              <div key={conta.id} style={{ ...card, padding: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 14, background: conta.cor || '#3B82F6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 13, fontFamily: "'DM Sans',sans-serif" }}>
-                    {conta.nome.slice(0, 2).toUpperCase()}
+        <Secao
+          titulo="Minhas contas"
+          cores={cores}
+          aoAdicionar={() => { setContaEditando(null); setModalConta(true); }}
+          colapsavel
+          aberto={contasAberto}
+          onToggle={() => setContasAberto(v => !v)}
+          contador={contas.length}
+          resumoColapsado={
+            contas.length > 0 ? (
+              <span style={{ fontSize: 13, fontWeight: 700, color: cores.verdeTexto, fontFamily: "'DM Sans',sans-serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                R$ {fmt(totalSaldoContas)} total
+              </span>
+            ) : undefined
+          }
+        />
+
+        {/* Conteúdo das contas — animação de colapso */}
+        <div style={{
+          display: 'grid',
+          gridTemplateRows: contasAberto ? '1fr' : '0fr',
+          opacity: contasAberto ? 1 : 0,
+          transition: 'grid-template-rows .32s cubic-bezier(.4,0,.2,1), opacity .22s ease',
+        }}>
+          <div style={{ overflow: 'hidden' }}>
+            {contas.length === 0 ? (
+              <EmptyState icone="🏦" texto="Nenhuma conta cadastrada" acao={() => { setContaEditando(null); setModalConta(true); }} rotuloBotao="Adicionar conta" cores={cores} />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+                {contas.map(conta => (
+                  <div key={conta.id} style={{ ...card, padding: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: 14, background: conta.cor || '#3B82F6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 13, fontFamily: "'DM Sans',sans-serif" }}>
+                        {conta.nome.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif" }}>Conta {conta.tipo}</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: cores.textoTitulo, fontFamily: "'DM Sans',sans-serif" }}>{conta.nome}</div>
+                      </div>
+                      <div style={{ textAlign: 'right', marginRight: 8 }}>
+                        <div style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif" }}>Saldo</div>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: cores.textoTitulo, fontFamily: "'DM Sans',sans-serif" }}>R$ {fmt(conta.saldo)}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <BtnAcao icone="✏️" onClick={() => { setContaEditando(conta); setModalConta(true); }} bg={cores.bgTerciario} />
+                        <BtnAcao icone="🗑️" onClick={() => excluirConta(conta.id)} bg={cores.vermelhFundo} />
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif" }}>Conta {conta.tipo}</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: cores.textoTitulo, fontFamily: "'DM Sans',sans-serif" }}>{conta.nome}</div>
-                  </div>
-                  <div style={{ textAlign: 'right', marginRight: 8 }}>
-                    <div style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif" }}>Saldo</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: cores.textoTitulo, fontFamily: "'DM Sans',sans-serif" }}>R$ {fmt(conta.saldo)}</div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <BtnAcao icone="✏️" onClick={() => { setContaEditando(conta); setModalConta(true); }} bg={cores.bgTerciario} />
-                    <BtnAcao icone="🗑️" onClick={() => excluirConta(conta.id)} bg={cores.vermelhFundo} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {!contasAberto && <div style={{ height: 20 }} />}
+
+        {/* ── TOP 5 MAIORES DESPESAS DO MÊS ───────────────────── */}
+        {(() => {
+          const top5 = [...transacoes]
+            .filter(t => t.tipo === 'despesa')
+            .sort((a, b) => b.valor - a.valor)
+            .slice(0, 5);
+
+          if (top5.length === 0) return null;
+
+          const ICONES_CAT: Record<string, string> = {
+            Alimentação: '🍔', Moradia: '🏠', Transporte: '🚗', Saúde: '💊',
+            Educação: '📚', Lazer: '🎮', Assinaturas: '📱', Contas: '⚡',
+            Supermercado: '🛒', Combustível: '⛽', Roupas: '👗', Outros: '💸',
+          };
+
+          const maiorValor = top5[0].valor;
+          const totalTop5  = top5.reduce((s, t) => s + t.valor, 0);
+
+          return (
+            <>
+              {/* Cabeçalho com toggle */}
+              <Secao
+                titulo="Maiores despesas🔥 "
+                cores={cores}
+                colapsavel
+                aberto={despesasAberto}
+                onToggle={() => setDespesasAberto(v => !v)}
+                contador={top5.length}
+                resumoColapsado={
+                  <span style={{ fontSize: 13, fontWeight: 700, color: cores.vermelhoTexto, fontFamily: "'DM Sans',sans-serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    R$ {fmt(totalTop5)} total
+                  </span>
+                }
+              />
+
+              {/* Conteúdo colapsável */}
+              <div style={{
+                display: 'grid',
+                gridTemplateRows: despesasAberto ? '1fr' : '0fr',
+                opacity: despesasAberto ? 1 : 0,
+                transition: 'grid-template-rows .32s cubic-bezier(.4,0,.2,1), opacity .22s ease',
+              }}>
+                <div style={{ overflow: 'hidden' }}>
+                  {/* Subtítulo e total */}
+                  {despesasAberto && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <div style={{ fontSize: 16, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif",marginLeft: 25 }}>
+                        Top 5 do mês 
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: cores.vermelhoTexto, fontFamily: "'DM Sans',sans-serif" }}>
+                        R$ {fmt(totalTop5)}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
+                    {top5.map((t, idx) => {
+                      const pct = (t.valor / maiorValor) * 100;
+                      return (
+                        <div key={t.id} style={{ ...card, padding: '14px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            {/* Posição */}
+                            <div style={{
+                              width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+                              background: idx === 0 ? '#EF444420' : idx === 1 ? '#F9731618' : idx === 2 ? '#EAB30818' : cores.bgTerciario,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 12, fontWeight: 800,
+                              color: idx === 0 ? '#EF4444' : idx === 1 ? '#F97316' : idx === 2 ? '#CA8A04' : cores.textoSutil,
+                              fontFamily: "'DM Sans',sans-serif",
+                            }}>
+                              {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
+                            </div>
+
+                            {/* Ícone categoria */}
+                            <div style={{ width: 40, height: 40, borderRadius: 13, flexShrink: 0, background: cores.vermelhFundo, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19 }}>
+                              {ICONES_CAT[t.categoria] ?? '💸'}
+                            </div>
+
+                            {/* Info */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: cores.textoTitulo, fontFamily: "'DM Sans',sans-serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {t.titulo}
+                                </span>
+                                {t.recorrente && (
+                                  <span style={{ fontSize: 10, color: cores.azulPrimario, background: cores.azulFundo, padding: '1px 6px', borderRadius: 99, fontWeight: 700, flexShrink: 0 }}>
+                                    🔄
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Barra de proporção */}
+                              <div style={{ height: 4, background: cores.bgTerciario, borderRadius: 99, overflow: 'hidden' }}>
+                                <div style={{
+                                  width: `${pct}%`, height: '100%', borderRadius: 99,
+                                  background: idx === 0
+                                    ? 'linear-gradient(90deg,#EF4444,#F87171)'
+                                    : idx === 1
+                                    ? 'linear-gradient(90deg,#F97316,#FB923C)'
+                                    : 'linear-gradient(90deg,#94A3B8,#CBD5E1)',
+                                  transition: 'width .6s ease',
+                                }} />
+                              </div>
+
+                              <div style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif", marginTop: 3, display: 'flex', gap: 6 }}>
+                                <span>{(t as any).membro?.nome}</span>
+                                <span>•</span>
+                                <span>{t.categoria}</span>
+                              </div>
+                            </div>
+
+                            {/* Valor + status */}
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <div style={{ fontSize: 15, fontWeight: 800, color: cores.vermelhoTexto, fontFamily: "'DM Sans',sans-serif" }}>
+                                R$ {fmt(t.valor)}
+                              </div>
+                              <BadgeStatus status={t.status} cores={cores} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
 
-        {/* ── ÚLTIMAS TRANSAÇÕES ───────────────────────────────── */}
-        {transacoes.length > 0 && (
-          <>
-            <Secao titulo="Últimas transações" cores={cores} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
-              {transacoes.slice(0, 5).map(t => (
-                <div key={t.id} style={{ ...card, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 14, background: t.tipo === 'receita' ? cores.verdeFundo : cores.vermelhFundo, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
-                    {t.tipo === 'receita' ? '💰' : '💸'}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: cores.textoTitulo, fontFamily: "'DM Sans',sans-serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.titulo}</div>
-                    <div style={{ fontSize: 12, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif", marginTop: 2 }}>{(t as any).membro?.nome}</div>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: t.tipo === 'receita' ? cores.verdeTexto : cores.vermelhoTexto, fontFamily: "'DM Sans',sans-serif" }}>
-                      {t.tipo === 'receita' ? '+' : '-'}R$ {fmt(t.valor)}
-                    </div>
-                    <BadgeStatus status={t.status} cores={cores} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+              {!despesasAberto && <div style={{ height: 20 }} />}
+            </>
+          );
+        })()}
 
         <div style={{ height: 16 }} />
       </div>

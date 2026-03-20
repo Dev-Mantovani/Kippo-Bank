@@ -74,11 +74,6 @@ function GraficoConsolidado({ receitas, despesas, saldo, cores }: { receitas: nu
         <text x="105" y="115" textAnchor="middle" fontSize="14" fontWeight="800" fill={saldo >= 0 ? '#16A34A' : '#DC2626'} fontFamily="'DM Sans',sans-serif">
           R$ {saldo.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
         </text>
-        {/* Legenda */}
-        <circle cx="60" cy="185" r="5" fill="#22C55E" />
-        <text x="70" y="189" fontSize="11" fill={cores.textoSutil} fontFamily="'DM Sans',sans-serif">Receitas</text>
-        <circle cx="130" cy="185" r="5" fill="#EF4444" />
-        <text x="140" y="189" fontSize="11" fill={cores.textoSutil} fontFamily="'DM Sans',sans-serif">Despesas</text>
       </svg>
 
       {/* Barras horizontais */}
