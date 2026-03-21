@@ -38,9 +38,17 @@ export default function PaginaAutenticacao({ aoAutenticar }: Props) {
   return (
     <div style={{ minHeight: '100vh', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 24px' }}>
       {/* Logo / ícone */}
-      <div style={{ width: 72, height: 72, borderRadius: 24, background: 'linear-gradient(135deg,#3B82F6,#1D4ED8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, marginBottom: 28, boxShadow: '0 8px 24px rgba(59,130,246,.35)' }}>
-        💰
-      </div>
+      <img
+        src="/kippo_512.png"
+        alt="KIppo"
+        style={{
+          width: 72,
+          height: 72,
+          marginBottom: 28,
+          borderRadius: 24,
+          boxShadow: '0 8px 24px rgba(59,130,246,.35)',
+        }}
+      />
 
       <h1 style={{ fontSize: 26, fontWeight: 800, color: '#111827', fontFamily: "'DM Sans',sans-serif", margin: '0 0 8px', textAlign: 'center' }}>
         {ehLogin ? 'Bem-vindo de volta!' : 'Criar conta'}
