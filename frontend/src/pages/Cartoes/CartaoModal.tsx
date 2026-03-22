@@ -4,12 +4,15 @@ import { useTema } from '../../contexts/TemaContexto';
 import { useScrollLock } from '../../hooks/useScrollLock';
 import type { Cartao } from '../../types';
 import { createPortal } from 'react-dom';
+import type { MembroFamilia } from '../../types';
+
 
 interface Props {
   idUsuario: string;
   cartao: Cartao | null;
   aoFechar: () => void;
   aoSalvar: () => void;
+  membros: MembroFamilia[];
 }
 
 const CORES_CARTAO = [
@@ -26,27 +29,29 @@ const BANCOS_CARTAO = [
 const DIAS_FECHAMENTO = Array.from({ length: 28 }, (_, i) => i + 1);
 const DIAS_RAPIDOS = [1, 5, 8, 10, 12, 15, 18, 20, 25, 28];
 
-export default function ModalCartao({ idUsuario, cartao, aoFechar, aoSalvar }: Props) {
+export default function ModalCartao({ idUsuario, cartao, aoFechar, aoSalvar, membros }: Props) {
   const { cores } = useTema();
   useScrollLock(true);
 
-  const [nome,          setNome]          = useState(cartao?.nome           ?? '');
-  const [limite,        setLimite]        = useState(cartao?.limite?.toString() ?? '');
-  const [cor,           setCor]           = useState(cartao?.cor             ?? '#1a1a2e');
-  const [fechamentoDia, setFechamentoDia] = useState(cartao?.fechamento_dia  ?? 10);
-  const [salvando,      setSalvando]      = useState(false);
+  const [nome, setNome] = useState(cartao?.nome ?? '');
+  const [limite, setLimite] = useState(cartao?.limite?.toString() ?? '');
+  const [cor, setCor] = useState(cartao?.cor ?? '#1a1a2e');
+  const [fechamentoDia, setFechamentoDia] = useState(cartao?.fechamento_dia ?? 10);
+  const [salvando, setSalvando] = useState(false);
+  const [membroId, setMembroId] = useState(cartao?.membro_id ?? '');
 
   const salvar = async () => {
     if (!nome.trim() || !limite) return;
     setSalvando(true);
     try {
       const payload = {
-        user_id:        idUsuario,
-        nome:           nome.trim(),
-        limite:         parseFloat(limite.replace(',', '.')) || 0,
-        usado:          0, // calculado dinamicamente pelas transações
+        user_id: idUsuario,
+        nome: nome.trim(),
+        limite: parseFloat(limite.replace(',', '.')) || 0,
+        usado: 0, // calculado dinamicamente pelas transações
         cor,
         fechamento_dia: fechamentoDia,
+        membro_id: membroId || null,
       };
       if (cartao) {
         await supabase.from('cards').update(payload).eq('id', cartao.id);
@@ -60,7 +65,7 @@ export default function ModalCartao({ idUsuario, cartao, aoFechar, aoSalvar }: P
   };
 
   const podeSalvar = nome.trim() && limite && !salvando;
-  const limiteNum  = parseFloat(limite.replace(',', '.')) || 0;
+  const limiteNum = parseFloat(limite.replace(',', '.')) || 0;
 
   const labelStyle: React.CSSProperties = {
     fontSize: 11, fontWeight: 700, letterSpacing: '.7px',
@@ -167,6 +172,43 @@ export default function ModalCartao({ idUsuario, cartao, aoFechar, aoSalvar }: P
             </select>
           </div>
 
+          {/* Membro */}
+          {membros.length > 0 && (
+            <div>
+              <label style={labelStyle}>Responsável pelo cartão</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {membros.map(m => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setMembroId(prev => prev === m.id ? '' : m.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '8px 14px', borderRadius: 99, border: 'none', cursor: 'pointer',
+                      background: membroId === m.id ? m.cor : cores.bgTerciario,
+                      color: membroId === m.id ? '#fff' : cores.textoSutil,
+                      fontSize: 13, fontWeight: 600,
+                      fontFamily: "'DM Sans',sans-serif",
+                      transition: 'all .15s',
+                      boxShadow: membroId === m.id ? `0 2px 8px ${m.cor}55` : 'none',
+                    }}
+                  >
+                    {/* Avatar mini */}
+                    <div style={{
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: membroId === m.id ? 'rgba(255,255,255,.3)' : m.cor,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 800, color: '#fff', flexShrink: 0,
+                    }}>
+                      {m.nome[0].toUpperCase()}
+                    </div>
+                    {m.nome}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Cor */}
           <div>
             <label style={labelStyle}>Cor do cartão</label>
@@ -175,7 +217,7 @@ export default function ModalCartao({ idUsuario, cartao, aoFechar, aoSalvar }: P
                 <button key={c} type="button" onClick={() => setCor(c)} style={{ width: 36, height: 36, borderRadius: 10, background: c, border: 'none', padding: 0, cursor: 'pointer', outline: cor === c ? `3px solid ${c}` : '3px solid transparent', outlineOffset: 3, transform: cor === c ? 'scale(1.2)' : 'scale(1)', boxShadow: cor === c ? `0 0 0 5px ${c}30, 0 4px 12px ${c}55` : '0 2px 8px rgba(0,0,0,.25)', transition: 'all .18s ease', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {cor === c && (
                     <svg width="14" height="14" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                      <polyline points="20 6 9 17 4 12"/>
+                      <polyline points="20 6 9 17 4 12" />
                     </svg>
                   )}
                 </button>

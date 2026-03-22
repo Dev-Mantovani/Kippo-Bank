@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { ProvedorTema, useTema } from './contexts/TemaContexto';
 import { useTamanhoTela } from './hooks/useTamanhoTela';
-
 import Sidebar from './components/Sidebar/Sidebar';
 import HeaderGlobal from './components/HeaderGlobal/HeaderGlobal';
 import MobileSidebar from './components/MobileSidebar/MobileSidebar';
@@ -13,7 +12,6 @@ import PaginaRelatorios from './pages/Relatorios/RelatoriosPage';
 import PaginaMembros from './pages/Membros/MembrosPage';
 import PaginaAutenticacao from './pages/Auth/AuthPage';
 import PaginaOnboarding from './pages/Onboarding/OnboardingPage';
-
 import type { Usuario } from './types';
 
 type Tela = 'dashboard' | 'transacoes' | 'relatorios' | 'membros';

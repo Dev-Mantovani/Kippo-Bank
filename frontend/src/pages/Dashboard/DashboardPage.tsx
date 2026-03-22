@@ -6,7 +6,8 @@ import { obterPeriodoFatura, formatarPeriodoFatura } from '../../utils/fatura';
 import { useTema } from '../../contexts/TemaContexto';
 import ModalConta from '../Contas/ContaModal';
 import ModalCartao from '../Cartoes/CartaoModal';
-import type { Transacao, Cartao, Conta, MembroFamilia } from '../../types'; // ← adicionar MembroFamilia
+import type { Transacao, Cartao, Conta} from '../../types'; 
+import type { MembroFamilia } from '../../types'; 
 
 interface Props { idUsuario: string; mesAtual: number; anoAtual: number; }
 
