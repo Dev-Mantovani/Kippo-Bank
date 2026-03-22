@@ -35,9 +35,9 @@ const CATEGORIAS_DESPESA = [
 ];
 const CATEGORIAS_RECEITA = ['Salário', 'Freelance', 'Investimentos', 'Bônus', 'Outros'];
 
-const IconSearch  = () => <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
-const IconFilter  = () => <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>;
-const IconX       = () => <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+const IconSearch = () => <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>;
+const IconFilter = () => <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>;
+const IconX = () => <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>;
 
 // ─── Chip de filtro ativo ─────────────────────────────────────────
 function ChipAtivo({ rotulo, onRemover, cores }: { rotulo: string; onRemover: () => void; cores: any }) {
@@ -106,27 +106,27 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
   const { cores } = useTema();
 
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
-  const [membros,    setMembros]    = useState<MembroFamilia[]>([]);
-  const [contas,     setContas]     = useState<Conta[]>([]);
-  const [cartoes,    setCartoes]    = useState<Cartao[]>([]);
+  const [membros, setMembros] = useState<MembroFamilia[]>([]);
+  const [contas, setContas] = useState<Conta[]>([]);
+  const [cartoes, setCartoes] = useState<Cartao[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   // ── Filtros ────────────────────────────────────────────────────
-  const [busca,          setBusca]          = useState('');
-  const [filtroTipo,     setFiltroTipo]     = useState<'todos' | 'receita' | 'despesa'>('todos');
+  const [busca, setBusca] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState<'todos' | 'receita' | 'despesa'>('todos');
   const [filtroCategoria, setFiltroCategoria] = useState('');
-  const [filtroMembro,   setFiltroMembro]   = useState('');
-  const [filtroConta,    setFiltroConta]    = useState('');
-  const [filtroCartao,   setFiltroCartao]   = useState('');
-  const [filtroStatus,   setFiltroStatus]   = useState('');
-  const [painelAberto,   setPainelAberto]   = useState(false);
+  const [filtroMembro, setFiltroMembro] = useState('');
+  const [filtroConta, setFiltroConta] = useState('');
+  const [filtroCartao, setFiltroCartao] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('');
+  const [painelAberto, setPainelAberto] = useState(false);
 
-  // ── Edição ─────────────────────────────────────────────────────
-  const [modalTipo,             setModalTipo]             = useState<'receita' | 'despesa' | null>(null);
-  const [fabAberto,             setFabAberto]             = useState(false);
-  const [transacaoParaEditar,   setTransacaoParaEditar]   = useState<Transacao | null>(null);
-  const [payloadPendente,       setPayloadPendente]       = useState<Record<string, unknown> | null>(null);
-  const [transacaoParaExcluir,  setTransacaoParaExcluir]  = useState<Transacao | null>(null);
+  // ── Edição / Modal ─────────────────────────────────────────────
+  const [modalTipo, setModalTipo] = useState<'receita' | 'despesa' | null>(null);
+  const [fabAberto, setFabAberto] = useState(false);
+  const [transacaoParaEditar, setTransacaoParaEditar] = useState<Transacao | null>(null);
+  const [payloadPendente, setPayloadPendente] = useState<Record<string, unknown> | null>(null);
+  const [transacaoParaExcluir, setTransacaoParaExcluir] = useState<Transacao | null>(null);
 
   useEffect(() => { carregarDados(); }, [idUsuario, mesAtual, anoAtual]);
 
@@ -144,9 +144,9 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
       supabase.from('cards').select('*').eq('user_id', idUsuario),
     ]);
 
-    if (resT.data)  setTransacoes(resT.data);
-    if (resM.data)  setMembros(resM.data);
-    if (resC.data)  setContas(resC.data);
+    if (resT.data) setTransacoes(resT.data);
+    if (resM.data) setMembros(resM.data);
+    if (resC.data) setContas(resC.data);
     if (resCa.data) setCartoes(resCa.data);
     setCarregando(false);
   };
@@ -177,11 +177,17 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
     carregarDados(true);
   };
 
+  // ── Abrir modal de nova transação ──────────────────────────────
+  const abrirModal = (tipo: 'receita' | 'despesa') => {
+    setModalTipo(tipo);
+    setFabAberto(false);
+  };
+
   // ── Categorias disponíveis conforme tipo selecionado ───────────
   const categoriasDisponiveis = useMemo(() => {
     if (filtroTipo === 'receita') return CATEGORIAS_RECEITA;
     if (filtroTipo === 'despesa') return CATEGORIAS_DESPESA;
-    return [...CATEGORIAS_RECEITA, ...CATEGORIAS_DESPESA];
+    return Array.from(new Set([...CATEGORIAS_RECEITA, ...CATEGORIAS_DESPESA]));
   }, [filtroTipo]);
 
   // ── Filtros aplicados ──────────────────────────────────────────
@@ -198,7 +204,7 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
 
   // ── Contagem de filtros ativos (exceto tipo e busca) ──────────
   const qtdFiltrosExtras = [filtroCategoria, filtroMembro, filtroConta, filtroCartao, filtroStatus].filter(Boolean).length;
-  const temFiltroAtivo   = qtdFiltrosExtras > 0;
+  const temFiltroAtivo = qtdFiltrosExtras > 0;
 
   const limparTudo = () => {
     setFiltroCategoria('');
@@ -220,40 +226,61 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
   const totalDespesas = filtradas.filter(t => t.tipo === 'despesa').reduce((s, t) => s + t.valor, 0);
 
   const card = { background: cores.bgCard, borderRadius: 18, border: `1px solid ${cores.borda}`, boxShadow: cores.sombra };
-  const abrirModal = (tipo: 'receita' | 'despesa') => { setModalTipo(tipo); setFabAberto(false); };
 
   return (
     <div style={{ background: cores.bgPrimario, minHeight: '100vh', transition: 'background .3s' }}>
       <div style={{ padding: '16px 16px 0' }}>
 
         {/* ── Filtro tipo ───────────────────────────────────── */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 15, marginBottom: 12 }}>
           {(['todos', 'receita', 'despesa'] as const).map(f => (
-            <button key={f} onClick={() => { setFiltroTipo(f); setFiltroCategoria(''); }} style={{ padding: '7px 16px', borderRadius: 99, border: 'none', cursor: 'pointer', background: filtroTipo === f ? cores.azulPrimario : cores.bgTerciario, color: filtroTipo === f ? '#fff' : cores.textoSutil, fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans',sans-serif", transition: 'all .2s' }}>
+            <button
+              key={f}
+              onClick={() => { setFiltroTipo(f); setFiltroCategoria(''); }}
+              style={{
+                padding: '7px 16px', borderRadius: 99, border: 'none', cursor: 'pointer',
+                background: filtroTipo === f ? cores.azulPrimario : cores.bgTerciario,
+                color: filtroTipo === f ? '#fff' : cores.textoSutil,
+                fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans',sans-serif",
+                transition: 'all .2s',
+              }}
+            >
               {f === 'todos' ? 'Todos' : f === 'receita' ? '💰 Receitas' : '💸 Despesas'}
             </button>
           ))}
         </div>
 
-        {/* ── Busca + botão filtros ─────────────────────────── */}
+        {/* ── Busca + Filtros + Botão + ─────────────────────── */}
         <div style={{ display: 'flex', gap: 8, marginBottom: temFiltroAtivo ? 10 : 4 }}>
+
           {/* Barra de busca */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, background: cores.bgTerciario, borderRadius: 14, padding: '11px 14px', border: `1px solid ${cores.borda}`, color: cores.textoSutil }}>
+          <div style={{
+            flex: 1, display: 'flex', alignItems: 'center', gap: 10,
+            background: cores.bgTerciario, borderRadius: 14, padding: '11px 14px',
+            border: `1px solid ${cores.borda}`, color: cores.textoSutil,
+          }}>
             <IconSearch />
             <input
               value={busca}
               onChange={e => setBusca(e.target.value)}
               placeholder="Pesquisar transação..."
-              style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 14, outline: 'none', fontFamily: "'DM Sans',sans-serif", color: cores.textoCorpo }}
+              style={{
+                flex: 1, border: 'none', background: 'transparent',
+                fontSize: 14, outline: 'none',
+                fontFamily: "'DM Sans',sans-serif", color: cores.textoCorpo,
+              }}
             />
             {busca && (
-              <button onClick={() => setBusca('')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: cores.textoSutil, display: 'flex', alignItems: 'center', padding: 0 }}>
+              <button
+                onClick={() => setBusca('')}
+                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: cores.textoSutil, display: 'flex', alignItems: 'center', padding: 0 }}
+              >
                 <IconX />
               </button>
             )}
           </div>
 
-          {/* Botão filtros */}
+          {/* Botão Filtros */}
           <button
             onClick={() => setPainelAberto(v => !v)}
             style={{
@@ -268,7 +295,6 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
           >
             <IconFilter />
             Filtros
-            {/* Badge com contagem */}
             {qtdFiltrosExtras > 0 && (
               <div style={{
                 position: 'absolute', top: -6, right: -6,
@@ -282,6 +308,71 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
               </div>
             )}
           </button>
+
+          {/* Botão + com dropdown */}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <button
+              onClick={() => setFabAberto(v => !v)}
+              style={{
+                width: 38, height: 37, borderRadius: 39, border: 'none', cursor: 'pointer',
+                background: 'linear-gradient(135deg,#3B82F6,#1D4ED8)',
+                color: '#fff', fontSize: 26,
+                boxShadow: '0 4px 14px rgba(59,130,246,.5)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transform: fabAberto ? 'rotate(45deg)' : 'rotate(0deg)',
+                transition: 'transform .2s ease',
+              }}
+            >
+              +
+            </button>
+
+            {/* Dropdown */}
+            {fabAberto && (
+              <>
+                {/* Overlay para fechar ao clicar fora */}
+                <div
+                  onClick={() => setFabAberto(false)}
+                  style={{ position: 'fixed', inset: 0, zIndex: 90 }}
+                />
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                  background: cores.bgCard, borderRadius: 16,
+                  border: `1px solid ${cores.borda}`,
+                  boxShadow: '0 8px 32px rgba(0,0,0,.18)',
+                  padding: 8, display: 'flex', flexDirection: 'column', gap: 4,
+                  zIndex: 100, minWidth: 170,
+                  animation: 'fadeDown .15s ease',
+                }}>
+                  <button
+                    onClick={() => abrirModal('receita')}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 14px', borderRadius: 11, border: 'none', cursor: 'pointer',
+                      background: cores.verdeFundo, color: cores.verdeTexto,
+                      fontSize: 13, fontWeight: 700, fontFamily: "'DM Sans',sans-serif",
+                      textAlign: 'left',
+                    }}
+                  >
+                    <span style={{ fontSize: 20 }}>💰</span>
+                    Nova Receita
+                  </button>
+                  <button
+                    onClick={() => abrirModal('despesa')}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 14px', borderRadius: 11, border: 'none', cursor: 'pointer',
+                      background: cores.vermelhFundo, color: cores.vermelhoTexto,
+                      fontSize: 13, fontWeight: 700, fontFamily: "'DM Sans',sans-serif",
+                      textAlign: 'left',
+                    }}
+                  >
+                    <span style={{ fontSize: 20 }}>💸</span>
+                    Nova Despesa
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* ── Chips de filtros ativos ───────────────────────── */}
@@ -300,9 +391,12 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
               <ChipAtivo rotulo={`💳 ${cartoes.find(c => c.id === filtroCartao)?.nome ?? filtroCartao}`} onRemover={() => setFiltroCartao('')} cores={cores} />
             )}
             {filtroStatus && (
-              <ChipAtivo rotulo={filtroStatus === 'pago' ? '✅ Pago' : filtroStatus === 'recebido' ? '✅ Recebido' : '⏳ Pendente'} onRemover={() => setFiltroStatus('')} cores={cores} />
+              <ChipAtivo
+                rotulo={filtroStatus === 'pago' ? '✅ Pago' : filtroStatus === 'recebido' ? '✅ Recebido' : '⏳ Pendente'}
+                onRemover={() => setFiltroStatus('')}
+                cores={cores}
+              />
             )}
-
             <button
               onClick={limparTudo}
               style={{ fontSize: 12, fontWeight: 600, color: cores.vermelhoTexto, background: cores.vermelhFundo, border: 'none', borderRadius: 99, padding: '4px 12px', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
@@ -328,8 +422,6 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
               display: 'flex', flexDirection: 'column', gap: 18,
               marginBottom: 4,
             }}>
-
-              {/* Categoria */}
               <GrupoFiltro
                 titulo="Categoria"
                 cores={cores}
@@ -337,8 +429,6 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
                 onSelecionar={setFiltroCategoria}
                 opcoes={categoriasDisponiveis.map(c => ({ valor: c, rotulo: c, emoji: ICONES[c] }))}
               />
-
-              {/* Membro */}
               {membros.length > 0 && (
                 <GrupoFiltro
                   titulo="Pessoa"
@@ -348,8 +438,6 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
                   opcoes={membros.map(m => ({ valor: m.id, rotulo: m.nome }))}
                 />
               )}
-
-              {/* Conta */}
               {contas.length > 0 && (
                 <GrupoFiltro
                   titulo="Conta"
@@ -359,8 +447,6 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
                   opcoes={contas.map(c => ({ valor: c.id, rotulo: c.nome, emoji: '🏦' }))}
                 />
               )}
-
-              {/* Cartão */}
               {cartoes.length > 0 && (
                 <GrupoFiltro
                   titulo="Cartão"
@@ -370,8 +456,6 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
                   opcoes={cartoes.map(c => ({ valor: c.id, rotulo: c.nome, emoji: '💳' }))}
                 />
               )}
-
-              {/* Status */}
               <GrupoFiltro
                 titulo="Status"
                 cores={cores}
@@ -379,12 +463,10 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
                 onSelecionar={setFiltroStatus}
                 opcoes={[
                   { valor: 'recebido', rotulo: 'Recebido', emoji: '✅' },
-                  { valor: 'pago',     rotulo: 'Pago',     emoji: '✅' },
+                  { valor: 'pago', rotulo: 'Pago', emoji: '✅' },
                   { valor: 'pendente', rotulo: 'Pendente', emoji: '⏳' },
                 ]}
               />
-
-              {/* Rodapé do painel */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4, borderTop: `1px solid ${cores.borda}` }}>
                 <button
                   onClick={limparTudo}
@@ -403,11 +485,9 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
           </div>
         </div>
 
-        {/* ── Resumo dos resultados (quando há filtro ativo) ── */}
+        {/* ── Resumo dos resultados ─────────────────────────── */}
         {(temFiltroAtivo || busca) && !carregando && (
-          <div style={{
-            display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap',
-          }}>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 12, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif", alignSelf: 'center' }}>
               {filtradas.length} resultado{filtradas.length !== 1 ? 's' : ''}
             </div>
@@ -426,11 +506,10 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
       </div>
 
       {/* ── Lista de transações ───────────────────────────────── */}
-      <div style={{ padding: '4px 16px' }}>
+      <div>
         {carregando ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
             <div style={{ width: 36, height: 36, borderRadius: '50%', border: `3px solid ${cores.bgTerciario}`, borderTop: `3px solid ${cores.azulPrimario}`, animation: 'spin .8s linear infinite' }} />
-            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
           </div>
         ) : Object.keys(grupos).length === 0 ? (
           <div style={{ textAlign: 'center', padding: '48px 0', color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif" }}>
@@ -457,13 +536,12 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
                 <div style={{ fontSize: 12, fontWeight: 600, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif", textTransform: 'capitalize' }}>
                   {fmtGrupo(data)}
                 </div>
-                {/* Total do dia */}
                 <div style={{ fontSize: 12, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", color: cores.textoSutil }}>
                   {(() => {
-                    const recDia  = items.filter(t => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0);
+                    const recDia = items.filter(t => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0);
                     const despDia = items.filter(t => t.tipo === 'despesa').reduce((s, t) => s + t.valor, 0);
                     if (recDia > 0 && despDia > 0) return `+${fmt(recDia)} / -${fmt(despDia)}`;
-                    if (recDia > 0)  return <span style={{ color: cores.verdeTexto }}>+R$ {fmt(recDia)}</span>;
+                    if (recDia > 0) return <span style={{ color: cores.verdeTexto }}>+R$ {fmt(recDia)}</span>;
                     if (despDia > 0) return <span style={{ color: cores.vermelhoTexto }}>-R$ {fmt(despDia)}</span>;
                     return null;
                   })()}
@@ -472,7 +550,7 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {items.map(t => {
-                  const contaNome  = contas.find(c => c.id === t.conta_id)?.nome;
+                  const contaNome = contas.find(c => c.id === t.conta_id)?.nome;
                   const cartaoNome = cartoes.find(c => c.id === t.cartao_id)?.nome;
 
                   return (
@@ -487,7 +565,6 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
                         <div style={{ fontSize: 14, fontWeight: 700, color: cores.textoTitulo, fontFamily: "'DM Sans',sans-serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {t.titulo}{t.recorrente ? ' 🔄' : ''}
                         </div>
-                        {/* Linha de detalhes */}
                         <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginTop: 3, flexWrap: 'wrap' }}>
                           <span style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif" }}>
                             {(t as any).membro?.nome ?? '—'}
@@ -495,9 +572,7 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
                           {t.categoria && (
                             <>
                               <span style={{ fontSize: 11, color: cores.bgTerciario }}>•</span>
-                              <span style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif" }}>
-                                {t.categoria}
-                              </span>
+                              <span style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif" }}>{t.categoria}</span>
                             </>
                           )}
                           {(contaNome || cartaoNome) && (
@@ -516,7 +591,13 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
                         <div style={{ fontSize: 14, fontWeight: 800, color: t.tipo === 'receita' ? cores.verdeTexto : cores.vermelhoTexto, fontFamily: "'DM Sans',sans-serif" }}>
                           {t.tipo === 'receita' ? '+' : '-'}R$ {fmt(t.valor)}
                         </div>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: (t.status === 'recebido' || t.status === 'pago') ? cores.verdeTexto : cores.amareloTexto, background: (t.status === 'recebido' || t.status === 'pago') ? cores.verdeFundo : cores.amareloFundo, padding: '2px 8px', borderRadius: 99, fontFamily: "'DM Sans',sans-serif", marginTop: 2, display: 'inline-block' }}>
+                        <span style={{
+                          fontSize: 11, fontWeight: 600,
+                          color: (t.status === 'recebido' || t.status === 'pago') ? cores.verdeTexto : cores.amareloTexto,
+                          background: (t.status === 'recebido' || t.status === 'pago') ? cores.verdeFundo : cores.amareloFundo,
+                          padding: '2px 8px', borderRadius: 99, fontFamily: "'DM Sans',sans-serif",
+                          marginTop: 2, display: 'inline-block',
+                        }}>
                           {t.status}
                         </span>
                       </div>
@@ -533,24 +614,10 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
         )}
       </div>
 
-      {/* ── FAB ──────────────────────────────────────────────── */}
-      <div style={{ position: 'fixed', bottom: 90, right: 'calc(50% - 215px + 16px)', zIndex: 50, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>
-        {fabAberto && (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, animation: 'fadeUp .15s ease' }}>
-              <span style={{ background: cores.bgCard, color: cores.textoCorpo, fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans',sans-serif", padding: '6px 12px', borderRadius: 10, boxShadow: cores.sombra, whiteSpace: 'nowrap' }}>Nova Receita</span>
-              <button onClick={() => abrirModal('receita')} style={{ width: 50, height: 50, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#22C55E,#16A34A)', color: '#fff', fontSize: 22, boxShadow: '0 6px 20px rgba(34,197,94,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>💰</button>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, animation: 'fadeUp .2s ease' }}>
-              <span style={{ background: cores.bgCard, color: cores.textoCorpo, fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans',sans-serif", padding: '6px 12px', borderRadius: 10, boxShadow: cores.sombra, whiteSpace: 'nowrap' }}>Nova Despesa</span>
-              <button onClick={() => abrirModal('despesa')} style={{ width: 50, height: 50, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#EF4444,#DC2626)', color: '#fff', fontSize: 22, boxShadow: '0 6px 20px rgba(239,68,68,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>💸</button>
-            </div>
-          </>
-        )}
-        <button onClick={() => setFabAberto(v => !v)} style={{ width: 54, height: 54, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#3B82F6,#1D4ED8)', color: '#fff', fontSize: 26, boxShadow: '0 6px 20px rgba(59,130,246,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: fabAberto ? 'rotate(45deg)' : 'rotate(0deg)', transition: 'transform .2s ease' }}>+</button>
-      </div>
-
-      <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg) } }
+        @keyframes fadeDown { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: translateY(0) } }
+      `}</style>
 
       {/* ── Modais ───────────────────────────────────────────── */}
       {modalTipo === 'receita' && !transacaoParaEditar && (
