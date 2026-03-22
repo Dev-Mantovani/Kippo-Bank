@@ -175,45 +175,56 @@ function CartaoCard({ cartao, fatura, cores, membros, onEditar, onExcluir, onMar
 
   return (
     <div style={{ background: cores.bgCard, borderRadius: 20, border: `1px solid ${fatPaga ? '#22C55E44' : cores.borda}`, boxShadow: cores.sombra, padding: 16, transition: 'border-color .3s' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+
+      {/* ── Linha 1: ícone + nome + ações ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
         <div style={{ width: 44, height: 44, borderRadius: 14, background: cartao.cor || '#1A1A2E', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 13, fontFamily: "'DM Sans',sans-serif", flexShrink: 0 }}>
           {cartao.nome.slice(0, 2).toUpperCase()}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif" }}>Cartão de crédito</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: cores.textoTitulo, fontFamily: "'DM Sans',sans-serif" }}>{cartao.nome}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: cores.textoTitulo, fontFamily: "'DM Sans',sans-serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cartao.nome}</div>
         </div>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          <BtnAcao icone="✏️" onClick={onEditar} bg={cores.bgTerciario} />
+          <BtnAcao icone="🗑️" onClick={onExcluir} bg={cores.vermelhFundo} />
+        </div>
+      </div>
+
+      {/* ── Linha 2: membro + status badge ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
         {membro && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <div style={{
-              width: 16, height: 16, borderRadius: '50%',
+              width: 18, height: 18, borderRadius: '50%',
               background: membro.cor,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 9, fontWeight: 800, color: '#fff', flexShrink: 0,
             }}>
               {membro.nome[0].toUpperCase()}
             </div>
-            <span style={{ fontSize: 11, fontWeight: 600, color: membro.cor, fontFamily: "'DM Sans',sans-serif" }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: membro.cor, fontFamily: "'DM Sans',sans-serif" }}>
               {membro.nome}
             </span>
           </div>
         )}
-        <div style={{ padding: '4px 10px', borderRadius: 99, background: fatPaga ? cores.verdeFundo : fatura.jaFechou ? cores.amareloFundo : cores.bgTerciario, border: `1px solid ${fatPaga ? '#22C55E55' : fatura.jaFechou ? '#F59E0B55' : cores.borda}` }}>
+        {membro && (
+          <span style={{ fontSize: 11, color: cores.bgTerciario }}>•</span>
+        )}
+        <div style={{ padding: '3px 10px', borderRadius: 99, background: fatPaga ? cores.verdeFundo : fatura.jaFechou ? cores.amareloFundo : cores.bgTerciario, border: `1px solid ${fatPaga ? '#22C55E55' : fatura.jaFechou ? '#F59E0B55' : cores.borda}` }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: fatPaga ? cores.verdeTexto : fatura.jaFechou ? cores.amareloTexto : cores.textoSutil, fontFamily: "'DM Sans',sans-serif" }}>
             {fatPaga ? '✅ Paga' : fatura.jaFechou ? '🔔 Fechada' : '🔓 Aberta'}
           </span>
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <BtnAcao icone="✏️" onClick={onEditar} bg={cores.bgTerciario} />
-          <BtnAcao icone="🗑️" onClick={onExcluir} bg={cores.vermelhFundo} />
-        </div>
       </div>
 
-      <div style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif", marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      {/* ── Linha 3: período ── */}
+      <div style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif", marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         📅 <span style={{ fontWeight: 600, color: cores.textoCorpo }}>{fatura.periodo}</span>
-        {cartao.fechamento_dia && <span> • Fecha dia {cartao.fechamento_dia}</span>}
+        {cartao.fechamento_dia && <span>• Fecha dia {cartao.fechamento_dia}</span>}
       </div>
 
+      {/* ── Valores ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
         <div>
           <div style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif" }}>Fatura do período</div>
@@ -229,6 +240,7 @@ function CartaoCard({ cartao, fatura, cores, membros, onEditar, onExcluir, onMar
         </div>
       </div>
 
+      {/* ── Barra ── */}
       <div style={{ height: 8, background: cores.bgTerciario, borderRadius: 99, overflow: 'hidden', marginBottom: 8 }}>
         <div style={{ width: `${pct}%`, height: '100%', background: fatPaga ? 'linear-gradient(90deg,#22C55E,#4ADE80)' : `linear-gradient(90deg,${corBarra},${corBarra}bb)`, borderRadius: 99, transition: 'width .5s ease' }} />
       </div>
@@ -236,6 +248,7 @@ function CartaoCard({ cartao, fatura, cores, membros, onEditar, onExcluir, onMar
         {pct.toFixed(0)}% do limite (R$ {fmt(cartao.limite)})
       </div>
 
+      {/* ── Botão pagar ── */}
       {fatura.jaFechou && !fatPaga && fatura.total > 0 && (
         <button
           onClick={() => onMarcarPaga(cartao.id, fatura.invoiceId)}
