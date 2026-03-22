@@ -183,7 +183,7 @@ export default function ModalDespesa({ idUsuario, despesa, membros, contas, cart
                 </select>
               </div>
             )}
-            {cartoes.length > 0 && (
+            {/*cartoes.length > 0 && (
               <div>
                 <label style={labelStyle}>Cartão</label>
                 <select style={{ ...inputStyle, appearance: 'none', WebkitAppearance: 'none' }} value={cartaoId} onChange={e => { setCartaoId(e.target.value); if (e.target.value) setContaId(''); }}>
@@ -191,7 +191,7 @@ export default function ModalDespesa({ idUsuario, despesa, membros, contas, cart
                   {cartoes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                 </select>
               </div>
-            )}
+            )*/}
           </div>
 
           <button type="button" onClick={() => setRecorrente((v: boolean) => !v)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px', borderRadius: 16, border: `2px solid ${recorrente ? '#ef4444' : cores.borda}`, background: recorrente ? '#ef444412' : cores.bgTerciario, cursor: 'pointer', textAlign: 'left', transition: 'all .2s' }}>

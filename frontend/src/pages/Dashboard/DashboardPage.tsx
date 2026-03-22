@@ -6,17 +6,17 @@ import { obterPeriodoFatura, formatarPeriodoFatura } from '../../utils/fatura';
 import { useTema } from '../../contexts/TemaContexto';
 import ModalConta from '../Contas/ContaModal';
 import ModalCartao from '../Cartoes/CartaoModal';
-import type { Transacao, Cartao, Conta } from '../../types';
+import type { Transacao, Cartao, Conta, MembroFamilia } from '../../types'; // ← adicionar MembroFamilia
 
 interface Props { idUsuario: string; mesAtual: number; anoAtual: number; }
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
 interface FaturaInfo {
-  total:     number;
-  status:    'aberta' | 'paga';
-  jaFechou:  boolean;
-  periodo:   string;
+  total: number;
+  status: 'aberta' | 'paga';
+  jaFechou: boolean;
+  periodo: string;
   invoiceId: string | null;
 }
 
@@ -157,15 +157,17 @@ interface CartaoCardProps {
   cartao: Cartao;
   fatura: FaturaInfo | null;
   cores: any;
+  membros: MembroFamilia[];
   onEditar: () => void;
   onExcluir: () => void;
   onMarcarPaga: (cartaoId: string, invoiceId: string | null) => void;
   marcandoPago: boolean;
 }
 
-function CartaoCard({ cartao, fatura, cores, onEditar, onExcluir, onMarcarPaga, marcandoPago }: CartaoCardProps) {
+function CartaoCard({ cartao, fatura, cores, membros, onEditar, onExcluir, onMarcarPaga, marcandoPago }: CartaoCardProps) {
   if (!fatura) return null;
 
+  const membro = membros.find(m => m.id === cartao.membro_id);
   const pct = Math.min((fatura.total / cartao.limite) * 100, 100);
   const corBarra = pct > 80 ? '#EF4444' : pct > 50 ? '#F59E0B' : '#22C55E';
   const fatPaga = fatura.status === 'paga';
@@ -180,6 +182,21 @@ function CartaoCard({ cartao, fatura, cores, onEditar, onExcluir, onMarcarPaga, 
           <div style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif" }}>Cartão de crédito</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: cores.textoTitulo, fontFamily: "'DM Sans',sans-serif" }}>{cartao.nome}</div>
         </div>
+        {membro && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
+            <div style={{
+              width: 16, height: 16, borderRadius: '50%',
+              background: membro.cor,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 9, fontWeight: 800, color: '#fff', flexShrink: 0,
+            }}>
+              {membro.nome[0].toUpperCase()}
+            </div>
+            <span style={{ fontSize: 11, fontWeight: 600, color: membro.cor, fontFamily: "'DM Sans',sans-serif" }}>
+              {membro.nome}
+            </span>
+          </div>
+        )}
         <div style={{ padding: '4px 10px', borderRadius: 99, background: fatPaga ? cores.verdeFundo : fatura.jaFechou ? cores.amareloFundo : cores.bgTerciario, border: `1px solid ${fatPaga ? '#22C55E55' : fatura.jaFechou ? '#F59E0B55' : cores.borda}` }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: fatPaga ? cores.verdeTexto : fatura.jaFechou ? cores.amareloTexto : cores.textoSutil, fontFamily: "'DM Sans',sans-serif" }}>
             {fatPaga ? '✅ Paga' : fatura.jaFechou ? '🔔 Fechada' : '🔓 Aberta'}
@@ -244,22 +261,23 @@ function CartaoCard({ cartao, fatura, cores, onEditar, onExcluir, onMarcarPaga, 
 export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props) {
   const { cores } = useTema();
 
-  const [transacoes,   setTransacoes]   = useState<Transacao[]>([]);
-  const [cartoes,      setCartoes]      = useState<Cartao[]>([]);
-  const [contas,       setContas]       = useState<Conta[]>([]);
-  const [faturas,      setFaturas]      = useState<Record<string, FaturaInfo>>({});
-  const [carregando,   setCarregando]   = useState(true);
+  const [transacoes, setTransacoes] = useState<Transacao[]>([]);
+  const [cartoes, setCartoes] = useState<Cartao[]>([]);
+  const [membros, setMembros] = useState<MembroFamilia[]>([]);
+  const [contas, setContas] = useState<Conta[]>([]);
+  const [faturas, setFaturas] = useState<Record<string, FaturaInfo>>({});
+  const [carregando, setCarregando] = useState(true);
   const [marcandoPago, setMarcandoPago] = useState<string | null>(null);
 
   // ── Colapso das seções (aberto por padrão) ────────────────────
-  const [cartoesAberto,  setCartoesAberto]  = useState(true);
-  const [contasAberto,   setContasAberto]   = useState(true);
+  const [cartoesAberto, setCartoesAberto] = useState(true);
+  const [contasAberto, setContasAberto] = useState(true);
   const [despesasAberto, setDespesasAberto] = useState(true);
 
   // Modais
-  const [modalConta,     setModalConta]     = useState(false);
-  const [modalCartao,    setModalCartao]    = useState(false);
-  const [contaEditando,  setContaEditando]  = useState<Conta | null>(null);
+  const [modalConta, setModalConta] = useState(false);
+  const [modalCartao, setModalCartao] = useState(false);
+  const [contaEditando, setContaEditando] = useState<Conta | null>(null);
   const [cartaoEditando, setCartaoEditando] = useState<Cartao | null>(null);
 
   useEffect(() => { carregarDados(); }, [idUsuario, mesAtual, anoAtual]);
@@ -282,9 +300,9 @@ export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props
 
     return {
       total,
-      status:    (invoice?.status ?? 'aberta') as 'aberta' | 'paga',
-      jaFechou:  periodo.jaFechou,
-      periodo:   formatarPeriodoFatura(periodo),
+      status: (invoice?.status ?? 'aberta') as 'aberta' | 'paga',
+      jaFechou: periodo.jaFechou,
+      periodo: formatarPeriodoFatura(periodo),
       invoiceId: invoice?.id ?? null,
     };
   }, [idUsuario, mesAtual, anoAtual]);
@@ -294,17 +312,19 @@ export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props
     const { dataInicioStr, dataFimStr } = obterPeriodoMes(anoAtual, mesAtual);
     await criarTransacoesRecorrentesMes(idUsuario, anoAtual, mesAtual);
 
-    const [resT, resC, resA] = await Promise.all([
+    const [resT, resC, resA, resM] = await Promise.all([
       supabase.from('transactions').select('*, membro:family_members(*)')
         .eq('user_id', idUsuario).gte('data', dataInicioStr).lte('data', dataFimStr)
         .order('data', { ascending: false }),
       supabase.from('cards').select('*').eq('user_id', idUsuario),
       supabase.from('accounts').select('*').eq('user_id', idUsuario),
+      supabase.from('family_members').select('*').eq('user_id', idUsuario),
     ]);
 
     if (resT.data) setTransacoes(resT.data);
     if (resC.data) setCartoes(resC.data);
     if (resA.data) setContas(resA.data);
+    if (resM.data) setMembros(resM.data);
 
     if (resC.data && resC.data.length > 0) {
       const pairs = await Promise.all(resC.data.map(async c => ({ id: c.id, fatura: await calcularFatura(c) })));
@@ -334,16 +354,16 @@ export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props
     }
   };
 
-  const excluirConta   = async (id: string) => { if (!window.confirm('Excluir esta conta?')) return; await supabase.from('accounts').delete().eq('id', id); carregarDados(); };
-  const excluirCartao  = async (id: string) => { if (!window.confirm('Excluir este cartão?')) return; await supabase.from('cards').delete().eq('id', id); carregarDados(); };
+  const excluirConta = async (id: string) => { if (!window.confirm('Excluir esta conta?')) return; await supabase.from('accounts').delete().eq('id', id); carregarDados(); };
+  const excluirCartao = async (id: string) => { if (!window.confirm('Excluir este cartão?')) return; await supabase.from('cards').delete().eq('id', id); carregarDados(); };
 
   const receitas = transacoes.filter(t => t.tipo === 'receita' && t.status === 'recebido').reduce((s, t) => s + t.valor, 0);
   const despesas = transacoes.filter(t => t.tipo === 'despesa' && t.status === 'pago').reduce((s, t) => s + t.valor, 0);
-  const saldo    = receitas - despesas;
+  const saldo = receitas - despesas;
 
   // Totais para resumo colapsado
-  const totalFaturas      = cartoes.reduce((s, c) => s + (faturas[c.id]?.total ?? 0), 0);
-  const totalSaldoContas  = contas.reduce((s, c) => s + c.saldo, 0);
+  const totalFaturas = cartoes.reduce((s, c) => s + (faturas[c.id]?.total ?? 0), 0);
+  const totalSaldoContas = contas.reduce((s, c) => s + c.saldo, 0);
 
   const card = { background: cores.bgCard, borderRadius: 20, border: `1px solid ${cores.borda}`, boxShadow: cores.sombra };
 
@@ -361,7 +381,7 @@ export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props
         {/* Cards receita + despesa */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
           {[
-            { label: 'Receitas', valor: receitas, bg: cores.verdeFundo,  iconBg: '#22C55E', textColor: cores.verdeTexto },
+            { label: 'Receitas', valor: receitas, bg: cores.verdeFundo, iconBg: '#22C55E', textColor: cores.verdeTexto },
             { label: 'Despesas', valor: despesas, bg: cores.vermelhFundo, iconBg: '#EF4444', textColor: cores.vermelhoTexto },
           ].map(c => (
             <div key={c.label} style={{ background: c.bg, borderRadius: 20, padding: '16px 14px', display: 'flex', alignItems: 'center', gap: 10, transition: 'background .3s' }}>
@@ -422,6 +442,7 @@ export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props
                       cartao={cartao}
                       fatura={faturas[cartao.id] ?? null}
                       cores={cores}
+                      membros={membros}
                       onEditar={() => { setCartaoEditando(cartao); setModalCartao(true); }}
                       onExcluir={() => excluirCartao(cartao.id)}
                       onMarcarPaga={marcarFaturaPaga}
@@ -511,7 +532,7 @@ export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props
           };
 
           const maiorValor = top5[0].valor;
-          const totalTop5  = top5.reduce((s, t) => s + t.valor, 0);
+          const totalTop5 = top5.reduce((s, t) => s + t.valor, 0);
 
           return (
             <>
@@ -541,8 +562,8 @@ export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props
                   {/* Subtítulo e total */}
                   {despesasAberto && (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <div style={{ fontSize: 16, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif",marginLeft: 25 }}>
-                        Top 5 do mês 
+                      <div style={{ fontSize: 16, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif", marginLeft: 25 }}>
+                        Top 5 do mês
                       </div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: cores.vermelhoTexto, fontFamily: "'DM Sans',sans-serif" }}>
                         R$ {fmt(totalTop5)}
@@ -593,8 +614,8 @@ export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props
                                   background: idx === 0
                                     ? 'linear-gradient(90deg,#EF4444,#F87171)'
                                     : idx === 1
-                                    ? 'linear-gradient(90deg,#F97316,#FB923C)'
-                                    : 'linear-gradient(90deg,#94A3B8,#CBD5E1)',
+                                      ? 'linear-gradient(90deg,#F97316,#FB923C)'
+                                      : 'linear-gradient(90deg,#94A3B8,#CBD5E1)',
                                   transition: 'width .6s ease',
                                 }} />
                               </div>
@@ -642,6 +663,7 @@ export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props
         <ModalCartao
           idUsuario={idUsuario}
           cartao={cartaoEditando}
+          membros={membros}
           aoFechar={() => { setModalCartao(false); setCartaoEditando(null); }}
           aoSalvar={() => { setModalCartao(false); setCartaoEditando(null); carregarDados(); }}
         />

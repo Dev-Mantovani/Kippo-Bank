@@ -35,13 +35,18 @@ function AppInterno() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    verificarUsuario();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, sessao) => {
-      if (sessao?.user) setUsuarioAtual({ id: sessao.user.id, email: sessao.user.email! });
-      else setUsuarioAtual(null);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
+  verificarUsuario();
+
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, sessao) => {
+    if (sessao?.user) {
+      verificarUsuario(); // ✅ busca o perfil completo com nome
+    } else {
+      setUsuarioAtual(null);
+    }
+  });
+
+  return () => subscription.unsubscribe();
+}, []);
 
   const verificarUsuario = async () => {
     try {

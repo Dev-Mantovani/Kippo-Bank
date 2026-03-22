@@ -164,7 +164,7 @@ export default function ModalReceita({ idUsuario, receita, membros, contas, aoFe
             </div>
           </div>
 
-          {contas.length > 0 && (
+         {/*contas.length > 0 && (
             <div>
               <label style={labelStyle}>Conta</label>
               <select style={{ ...inputStyle, appearance: 'none', WebkitAppearance: 'none' }} value={contaId} onChange={e => setContaId(e.target.value)}>
@@ -172,7 +172,7 @@ export default function ModalReceita({ idUsuario, receita, membros, contas, aoFe
                 {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>
-          )}
+          )*/}
 
           <button type="button" onClick={() => setRecorrente((v: boolean) => !v)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px', borderRadius: 16, border: `2px solid ${recorrente ? '#22c55e' : cores.borda}`, background: recorrente ? '#22c55e12' : cores.bgTerciario, cursor: 'pointer', textAlign: 'left', transition: 'all .2s' }}>
             <div style={{ width: 46, height: 26, borderRadius: 99, background: recorrente ? '#22c55e' : cores.bgTerciario, border: `2px solid ${recorrente ? '#22c55e' : cores.borda}`, position: 'relative', flexShrink: 0, transition: 'background .2s' }}>

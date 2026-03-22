@@ -36,6 +36,7 @@ export interface Cartao {
   usado: number;
   cor: string;
   fechamento_dia: number;
+  membro_id?: string | null;
 }
 
 export interface Transacao {

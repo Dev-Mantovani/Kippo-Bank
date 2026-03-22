@@ -180,7 +180,7 @@ export default function MobileSidebar({ aberto, telaAtiva, definirTela, nomeUsua
 
         {/* Rodapé: tema + sair */}
         <div style={{ padding: '12px 12px 28px', borderTop: `1px solid ${cores.borda}`, marginTop: 12 }}>
-          {/* Alternar tema */}
+          {/* Alternar tema 
           <button
             onClick={alternarTema}
             style={{
@@ -201,6 +201,8 @@ export default function MobileSidebar({ aberto, telaAtiva, definirTela, nomeUsua
               {tema === 'claro' ? 'Modo escuro' : 'Modo claro'}
             </span>
           </button>
+          */}
+          
 
           {/* Sair */}
           <button
