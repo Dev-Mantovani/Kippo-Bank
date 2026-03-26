@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useTema } from '../../contexts/TemaContexto';
 import { useScrollLock } from '../../hooks/useScrollLock';
@@ -53,6 +53,20 @@ export default function ModalDespesa({ idUsuario, despesa, membros, contas, cart
   const [cartaoId,   setCartaoId]   = useState(despesa?.cartao_id  ?? '');
   const [recorrente, setRecorrente] = useState(despesa?.recorrente ?? false);
   const [salvando,   setSalvando]   = useState(false);
+
+  // Quando o membro muda, limpa o cartão se ele não pertence ao novo membro
+  useEffect(() => {
+    if (cartaoId) {
+      const cartaoAtual = cartoes.find(c => c.id === cartaoId);
+      if (cartaoAtual?.membro_id && cartaoAtual.membro_id !== membroId) {
+        setCartaoId('');
+      }
+    }
+  }, [membroId]);
+
+  // Filtra apenas os cartões vinculados ao membro selecionado
+  // (inclui cartões sem membro definido, que são "compartilhados")
+  const cartoesDOMembro = cartoes.filter(c => !c.membro_id || c.membro_id === membroId);
 
   const salvar = async () => {
     if (!titulo.trim() || !valor || !membroId) return;
@@ -163,7 +177,11 @@ export default function ModalDespesa({ idUsuario, despesa, membros, contas, cart
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={labelStyle}>Pessoa</label>
-              <select style={{ ...inputStyle, appearance: 'none', WebkitAppearance: 'none' }} value={membroId} onChange={e => setMembroId(e.target.value)}>
+              <select
+                style={{ ...inputStyle, appearance: 'none', WebkitAppearance: 'none' }}
+                value={membroId}
+                onChange={e => setMembroId(e.target.value)}
+              >
                 {membros.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
               </select>
             </div>
@@ -173,26 +191,40 @@ export default function ModalDespesa({ idUsuario, despesa, membros, contas, cart
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {/*contas.length > 0 && (
-              <div>
-                <label style={labelStyle}>Conta</label>
-                <select style={{ ...inputStyle, appearance: 'none', WebkitAppearance: 'none' }} value={contaId} onChange={e => { setContaId(e.target.value); if (e.target.value) setCartaoId(''); }}>
-                  <option value="">Nenhuma</option>
-                  {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
-              </div>
-            )*/}
-            {cartoes.length > 0 && (
-              <div>
-                <label style={labelStyle}>Cartão</label>
-                <select style={{ ...inputStyle, appearance: 'none', WebkitAppearance: 'none' }} value={cartaoId} onChange={e => { setCartaoId(e.target.value); if (e.target.value) setContaId(''); }}>
-                  <option value="">Nenhum</option>
-                  {cartoes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
-              </div>
-            )}
-          </div>
+          {cartoesDOMembro.length > 0 && (
+            <div>
+              <label style={labelStyle}>
+                Cartão
+                {membroId && (
+                  <span style={{ fontSize: 10, fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 6, color: cores.textoSutil }}>
+                    — {membros.find(m => m.id === membroId)?.nome ?? ''}
+                  </span>
+                )}
+              </label>
+              <select
+                style={{ ...inputStyle, appearance: 'none', WebkitAppearance: 'none' }}
+                value={cartaoId}
+                onChange={e => { setCartaoId(e.target.value); if (e.target.value) setContaId(''); }}
+              >
+                <option value="">Nenhum</option>
+                {cartoesDOMembro.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </div>
+          )}
+
+          {cartoesDOMembro.length === 0 && cartoes.length > 0 && (
+            <div style={{
+              padding: '12px 14px', borderRadius: 14,
+              background: cores.amareloFundo,
+              border: `1px solid ${cores.amareloTexto}33`,
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <span style={{ fontSize: 16 }}>ℹ️</span>
+              <span style={{ fontSize: 12, color: cores.amareloTexto, fontFamily: "'DM Sans',sans-serif", fontWeight: 600 }}>
+                Nenhum cartão vinculado a este membro
+              </span>
+            </div>
+          )}
 
           <button type="button" onClick={() => setRecorrente((v: boolean) => !v)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px', borderRadius: 16, border: `2px solid ${recorrente ? '#ef4444' : cores.borda}`, background: recorrente ? '#ef444412' : cores.bgTerciario, cursor: 'pointer', textAlign: 'left', transition: 'all .2s' }}>
             <div style={{ width: 46, height: 26, borderRadius: 99, background: recorrente ? '#ef4444' : cores.bgTerciario, border: `2px solid ${recorrente ? '#ef4444' : cores.borda}`, position: 'relative', flexShrink: 0, transition: 'background .2s' }}>
