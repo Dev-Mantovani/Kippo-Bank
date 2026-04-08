@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620" font-family="'Segoe UI', Arial, sans-serif">
+
+  <!-- Background -->
+  <rect width="900" height="620" fill="#0f172a" rx="16"/>
+
+  <!-- Title -->
+  <text x="450" y="38" text-anchor="middle" font-size="20" font-weight="700" fill="#f1f5f9">Kippo Bank — Estrutura do Projeto</text>
+  <text x="450" y="58" text-anchor="middle" font-size="12" fill="#64748b">Cada camada tem uma responsabilidade única</text>
+
+  <!-- ── LAYER LABELS (left) ── -->
+  <!-- USER -->
+  <text x="22" y="112" font-size="10" fill="#94a3b8" font-weight="600" transform="rotate(-90,22,112)">USUÁRIO</text>
+  <!-- UI -->
+  <text x="22" y="222" font-size="10" fill="#94a3b8" font-weight="600" transform="rotate(-90,22,222)">UI</text>
+  <!-- LOGIC -->
+  <text x="22" y="372" font-size="10" fill="#94a3b8" font-weight="600" transform="rotate(-90,22,372)">LÓGICA</text>
+  <!-- DATA -->
+  <text x="22" y="512" font-size="10" fill="#94a3b8" font-weight="600" transform="rotate(-90,22,512)">DADOS</text>
+
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- ROW 1 — App.tsx  (coordinator) -->
+  <!-- ════════════════════════════════════════════ -->
+  <rect x="44" y="72" width="812" height="58" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="64" y="95" font-size="13" font-weight="700" fill="#7dd3fc">App.tsx</text>
+  <text x="64" y="114" font-size="11" fill="#94a3b8">Gerente geral: controla login, qual tela está ativa, mês/ano selecionado e distribui dados via SessaoContexto</text>
+  <!-- badge -->
+  <rect x="790" y="80" width="56" height="20" rx="6" fill="#0ea5e920"/>
+  <text x="818" y="94" text-anchor="middle" font-size="10" fill="#7dd3fc" font-weight="600">Contexto</text>
+
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- ROW 2 — Pages + Components  (UI) -->
+  <!-- ════════════════════════════════════════════ -->
+
+  <!-- Pages -->
+  <rect x="44" y="148" width="386" height="100" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="64" y="170" font-size="13" font-weight="700" fill="#a78bfa">📄 pages/</text>
+  <text x="64" y="190" font-size="11" fill="#94a3b8">Cada pasta = uma tela do app</text>
+  <text x="64" y="207" font-size="10" fill="#64748b">Dashboard · Transações · Membros · Relatórios</text>
+  <text x="64" y="222" font-size="10" fill="#64748b">Despesas · Receitas · Contas · Cartões · Auth</text>
+  <rect x="54" y="232" width="110" height="8" rx="4" fill="#a78bfa22"/>
+  <text x="109" y="239" text-anchor="middle" font-size="9" fill="#a78bfa">usa hooks + services</text>
+
+  <!-- Components -->
+  <rect x="470" y="148" width="386" height="100" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="490" y="170" font-size="13" font-weight="700" fill="#a78bfa">🧩 components/</text>
+  <text x="490" y="190" font-size="11" fill="#94a3b8">Blocos visuais reutilizáveis</text>
+  <text x="490" y="207" font-size="10" fill="#64748b">Sidebar · Header · Modal · AvatarPicker</text>
+  <text x="490" y="222" font-size="10" fill="#64748b">LoadingScreen · ModalEditarRecorrente</text>
+  <rect x="480" y="232" width="126" height="8" rx="4" fill="#a78bfa22"/>
+  <text x="543" y="239" text-anchor="middle" font-size="9" fill="#a78bfa">usados por qualquer page</text>
+
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- ROW 3 — Hooks · Validators · Constants · Contexts -->
+  <!-- ════════════════════════════════════════════ -->
+
+  <!-- Hooks -->
+  <rect x="44" y="272" width="186" height="114" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="64" y="294" font-size="13" font-weight="700" fill="#34d399">🎣 hooks/</text>
+  <text x="64" y="312" font-size="10" fill="#94a3b8">Buscam dados e gerenciam</text>
+  <text x="64" y="327" font-size="10" fill="#94a3b8">estado para as pages</text>
+  <text x="64" y="346" font-size="10" fill="#64748b">useTransacoes</text>
+  <text x="64" y="360" font-size="10" fill="#64748b">useMembros · useContas</text>
+  <text x="64" y="374" font-size="10" fill="#64748b">useCartoes · useScrollLock</text>
+
+  <!-- Validators -->
+  <rect x="246" y="272" width="180" height="114" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="266" y="294" font-size="13" font-weight="700" fill="#fbbf24">✅ validators/</text>
+  <text x="266" y="312" font-size="10" fill="#94a3b8">Validam formulários antes</text>
+  <text x="266" y="327" font-size="10" fill="#94a3b8">de enviar ao banco</text>
+  <text x="266" y="346" font-size="10" fill="#64748b">validarDespesa</text>
+  <text x="266" y="360" font-size="10" fill="#64748b">validarReceita</text>
+  <text x="266" y="374" font-size="10" fill="#64748b">validarConta · validarCartao</text>
+
+  <!-- Constants -->
+  <rect x="442" y="272" width="180" height="114" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="462" y="294" font-size="13" font-weight="700" fill="#fb923c">📋 constants/</text>
+  <text x="462" y="312" font-size="10" fill="#94a3b8">Dados fixos — listas e</text>
+  <text x="462" y="327" font-size="10" fill="#94a3b8">textos usados em todo app</text>
+  <text x="462" y="346" font-size="10" fill="#64748b">categorias.ts</text>
+  <text x="462" y="360" font-size="10" fill="#64748b">status.ts</text>
+  <text x="462" y="374" font-size="10" fill="#64748b">relacoes.ts</text>
+
+  <!-- Contexts -->
+  <rect x="638" y="272" width="218" height="114" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="658" y="294" font-size="13" font-weight="700" fill="#f472b6">🌐 contexts/</text>
+  <text x="658" y="312" font-size="10" fill="#94a3b8">Dados globais acessíveis</text>
+  <text x="658" y="327" font-size="10" fill="#94a3b8">por qualquer componente</text>
+  <text x="658" y="346" font-size="10" fill="#64748b">SessaoContexto</text>
+  <text x="658" y="360" font-size="10" fill="#64748b">→ idUsuario, mesAtual, anoAtual</text>
+  <text x="658" y="374" font-size="10" fill="#64748b">TemaContexto → cores, tema</text>
+
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- ROW 4 — Services -->
+  <!-- ════════════════════════════════════════════ -->
+
+  <rect x="44" y="412" width="812" height="100" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="64" y="434" font-size="13" font-weight="700" fill="#38bdf8">🔧 services/  — Repository Pattern</text>
+  <text x="64" y="452" font-size="10" fill="#94a3b8">Única camada que conversa com o banco. Nenhum outro arquivo usa o Supabase diretamente.</text>
+
+  <!-- service boxes -->
+  <rect x="54"  y="462" width="112" height="38" rx="8" fill="#0f172a" stroke="#1e40af" stroke-width="1"/>
+  <text x="110" y="477" text-anchor="middle" font-size="10" font-weight="600" fill="#7dd3fc">TransacaoService</text>
+  <text x="110" y="492" text-anchor="middle" font-size="9" fill="#64748b">criar, listar, editar, excluir</text>
+
+  <rect x="176" y="462" width="104" height="38" rx="8" fill="#0f172a" stroke="#1e40af" stroke-width="1"/>
+  <text x="228" y="477" text-anchor="middle" font-size="10" font-weight="600" fill="#7dd3fc">MembroService</text>
+  <text x="228" y="492" text-anchor="middle" font-size="9" fill="#64748b">CRUD + avatar</text>
+
+  <rect x="290" y="462" width="100" height="38" rx="8" fill="#0f172a" stroke="#1e40af" stroke-width="1"/>
+  <text x="340" y="477" text-anchor="middle" font-size="10" font-weight="600" fill="#7dd3fc">ContaService</text>
+  <text x="340" y="492" text-anchor="middle" font-size="9" fill="#64748b">CRUD contas</text>
+
+  <rect x="400" y="462" width="104" height="38" rx="8" fill="#0f172a" stroke="#1e40af" stroke-width="1"/>
+  <text x="452" y="477" text-anchor="middle" font-size="10" font-weight="600" fill="#7dd3fc">CartaoService</text>
+  <text x="452" y="492" text-anchor="middle" font-size="9" fill="#64748b">CRUD cartões</text>
+
+  <rect x="514" y="462" width="100" height="38" rx="8" fill="#0f172a" stroke="#1e40af" stroke-width="1"/>
+  <text x="564" y="477" text-anchor="middle" font-size="10" font-weight="600" fill="#7dd3fc">FaturaService</text>
+  <text x="564" y="492" text-anchor="middle" font-size="9" fill="#64748b">calcular, pagar</text>
+
+  <rect x="624" y="462" width="104" height="38" rx="8" fill="#0f172a" stroke="#1e40af" stroke-width="1"/>
+  <text x="676" y="477" text-anchor="middle" font-size="10" font-weight="600" fill="#7dd3fc">UsuarioService</text>
+  <text x="676" y="492" text-anchor="middle" font-size="9" fill="#64748b">sessão, logout</text>
+
+  <rect x="738" y="462" width="108" height="38" rx="8" fill="#0f172a" stroke="#7c3aed" stroke-width="1"/>
+  <text x="792" y="477" text-anchor="middle" font-size="10" font-weight="600" fill="#c4b5fd">RecorrenteFacade</text>
+  <text x="792" y="492" text-anchor="middle" font-size="9" fill="#64748b">sincronizar mês</text>
+
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- ROW 5 — Supabase -->
+  <!-- ════════════════════════════════════════════ -->
+
+  <rect x="44" y="536" width="812" height="52" rx="12" fill="#0c4a6e" stroke="#0ea5e9" stroke-width="1.5"/>
+  <text x="450" y="558" text-anchor="middle" font-size="13" font-weight="700" fill="#7dd3fc">☁️ Supabase</text>
+  <text x="450" y="576" text-anchor="middle" font-size="11" fill="#94a3b8">Banco de dados PostgreSQL + Autenticação + Storage de imagens</text>
+
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- ARROWS between rows -->
+  <!-- ════════════════════════════════════════════ -->
+
+  <!-- App → Pages -->
+  <line x1="237" y1="130" x2="237" y2="148" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+  <!-- App → Components -->
+  <line x1="663" y1="130" x2="663" y2="148" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+
+  <!-- Pages → Hooks -->
+  <line x1="160" y1="248" x2="137" y2="272" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+  <!-- Pages → Validators -->
+  <line x1="237" y1="248" x2="310" y2="272" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+  <!-- Pages → Constants -->
+  <line x1="370" y1="248" x2="490" y2="272" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+
+  <!-- Hooks → Services -->
+  <line x1="137" y1="386" x2="137" y2="412" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+
+  <!-- Services → Supabase -->
+  <line x1="450" y1="512" x2="450" y2="536" stroke="#0ea5e9" stroke-width="2" marker-end="url(#arrBlue)"/>
+
+  <!-- Arrowhead markers -->
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#475569"/>
+    </marker>
+    <marker id="arrBlue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#0ea5e9"/>
+    </marker>
+  </defs>
+
+  <!-- ── types badge (top right) ── -->
+  <rect x="750" y="72" width="106" height="42" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="803" y="89" text-anchor="middle" font-size="11" font-weight="700" fill="#e2e8f0">📐 types/</text>
+  <text x="803" y="106" text-anchor="middle" font-size="9" fill="#64748b">tipagem de tudo</text>
+
+</svg>
