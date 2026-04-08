@@ -1,47 +1,29 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { useState } from 'react';
 import { useTema } from '../../contexts/TemaContexto';
+import { useSessao } from '../../contexts/SessaoContexto';
+import { useMembros } from '../../hooks/useMembros';
+import { MembroService } from '../../services/MembroService';
+import { ROTULOS_RELACAO, EMOJIS_RELACAO } from '../../constants/relacoes';
 import ModalMembro from './MemberModal';
 import type { MembroFamilia } from '../../types';
 
-interface Props { idUsuario: string; }
-
-const ROTULOS: Record<string, string> = {
-  conjuge: 'Cônjuge', filho: 'Filho(a)', mae: 'Mãe',
-  pai: 'Pai', irmao: 'Irmão(ã)', outro: 'Outro',
-};
-const EMOJIS: Record<string, string> = {
-  conjuge: '💑', filho: '👶', mae: '👩',
-  pai: '👨', irmao: '🧑', outro: '👤',
-};
-
-export default function PaginaMembros({ idUsuario }: Props) {
+export default function PaginaMembros() {
+  const { idUsuario } = useSessao();
   const { cores } = useTema();
-  const [membros,      setMembros]      = useState<MembroFamilia[]>([]);
+  const { membros, carregando, recarregar } = useMembros(idUsuario);
   const [mostrarModal, setMostrarModal] = useState(false);
   const [editando,     setEditando]     = useState<MembroFamilia | null>(null);
-  const [carregando,   setCarregando]   = useState(true);
-
-  useEffect(() => { carregar(); }, [idUsuario]);
-
-  const carregar = async () => {
-    setCarregando(true);
-    const { data } = await supabase
-      .from('family_members').select('*').eq('user_id', idUsuario);
-    if (data) setMembros(data);
-    setCarregando(false);
-  };
 
   const excluir = async (id: string) => {
     if (!window.confirm('Excluir este membro?')) return;
-    await supabase.from('family_members').delete().eq('id', id);
-    carregar();
+    await MembroService.excluir(id);
+    recarregar();
   };
 
   const abrirNovo = () => { setEditando(null); setMostrarModal(true); };
   const abrirEditar = (m: MembroFamilia) => { setEditando(m); setMostrarModal(true); };
   const fecharModal = () => { setMostrarModal(false); setEditando(null); };
-  const salvoModal  = () => { carregar(); fecharModal(); };
+  const salvoModal  = () => { recarregar(); fecharModal(); };
 
   return (
     <div style={{ background: cores.bgPrimario, minHeight: '100vh', padding: '20px 16px 96px', transition: 'background .3s' }}>
@@ -212,9 +194,9 @@ function MemberCard({ membro: m, cores, onEditar, onExcluir }: CardProps) {
         display: 'flex', alignItems: 'center', gap: 4,
       }}>
         <span style={{ fontSize: 13 }}>
-          {({ conjuge:'💑', filho:'👶', mae:'👩', pai:'👨', irmao:'🧑', outro:'👤' } as any)[m.relacao] ?? '👤'}
+          {EMOJIS_RELACAO[m.relacao] ?? '👤'}
         </span>
-        {({ conjuge:'Cônjuge', filho:'Filho(a)', mae:'Mãe', pai:'Pai', irmao:'Irmão(ã)', outro:'Outro' } as any)[m.relacao] ?? m.relacao}
+        {ROTULOS_RELACAO[m.relacao] ?? m.relacao}
       </div>
 
       {/* Ações */}

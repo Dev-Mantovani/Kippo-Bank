@@ -1,36 +1,24 @@
 import { useState } from 'react';
-import { supabase } from '../../lib/supabase';
 import { useTema } from '../../contexts/TemaContexto';
 import { useScrollLock } from '../../hooks/useScrollLock';
-import type { MembroFamilia, Conta } from '../../types';
+import { TransacaoService } from '../../services/TransacaoService';
+import { validarReceita, parsearValor } from '../../validators/transacaoValidator';
+import { CATEGORIAS_RECEITA } from '../../constants/categorias';
+import { STATUS_RECEITA as STATUS } from '../../constants/status';
+import type { MembroFamilia, Conta, Transacao, TransacaoInput } from '../../types';
 import { createPortal } from 'react-dom';
 
 interface Props {
   idUsuario: string;
-  receita: any | null;
+  receita: Transacao | null;
   membros: MembroFamilia[];
   contas: Conta[];
   aoFechar: () => void;
   aoSalvar: () => void;
-  // Chamado no lugar de aoSalvar quando a edição é recorrente — deixa o pai decidir o modo
   aoSalvarPayload?: (payload: Record<string, unknown>) => Promise<void>;
 }
 
-const CATEGORIAS_RECEITA = [
-  { valor: 'Salário',       emoji: '💰' },
-  { valor: 'Freelance',     emoji: '💼' },
-  { valor: 'Investimentos', emoji: '📈' },
-  { valor: 'Bônus',         emoji: '🎁' },
-  { valor: 'Aluguel',       emoji: '🏠' },
-  { valor: 'Outros',        emoji: '💵' },
-];
-
-const STATUS_RECEITA = [
-  { valor: 'recebido', rotulo: 'Recebido', cor: '#22c55e' },
-  { valor: 'pendente', rotulo: 'Pendente', cor: '#f59e0b' },
-];
-
-export default function ModalReceita({ idUsuario, receita, membros, contas, aoFechar, aoSalvar, aoSalvarPayload }: Props) {
+export default function ModalReceita({ idUsuario, receita, membros, aoFechar, aoSalvar, aoSalvarPayload }: Props) {
   const { cores } = useTema();
   useScrollLock(true);
 
@@ -42,45 +30,49 @@ export default function ModalReceita({ idUsuario, receita, membros, contas, aoFe
   const [status,     setStatus]     = useState(receita?.status    ?? 'recebido');
   const [membroId,   setMembroId]   = useState(receita?.membro_id ?? (membros[0]?.id ?? ''));
   const [data,       setData]       = useState(receita?.data       ?? hoje);
-  const [contaId,    setContaId]    = useState(receita?.conta_id   ?? '');
+  const [contaId]                   = useState(receita?.conta_id   ?? '');
   const [recorrente, setRecorrente] = useState(receita?.recorrente ?? false);
   const [salvando,   setSalvando]   = useState(false);
+  const [erro,       setErro]       = useState<string | null>(null);
 
   const salvar = async () => {
-    if (!titulo.trim() || !valor || !membroId) return;
+    const erroValidacao = validarReceita({ titulo, valor, membroId });
+    if (erroValidacao) { setErro(erroValidacao); return; }
+
     setSalvando(true);
+    setErro(null);
     try {
-      const payload = {
-        user_id:    idUsuario,
-        tipo:       'receita',
-        titulo:     titulo.trim(),
-        valor:      parseFloat(valor.replace(',', '.')),
+      const payload: TransacaoInput = {
+        tipo:      'receita',
+        titulo:    titulo.trim(),
+        valor:     parsearValor(valor),
         categoria,
-        status,
-        membro_id:  membroId,
+        status:    status as TransacaoInput['status'],
+        membro_id: membroId,
         data,
-        conta_id:   contaId || null,
+        conta_id:  contaId || null,
         recorrente,
       };
 
-      // Edição de recorrente → delega ao pai para perguntar o modo
-      if (receita && receita.recorrente && aoSalvarPayload) {
-        await aoSalvarPayload(payload);
+      if (receita?.recorrente && aoSalvarPayload) {
+        await aoSalvarPayload({ ...payload, user_id: idUsuario });
         return;
       }
 
       if (receita) {
-        await supabase.from('transactions').update(payload).eq('id', receita.id);
+        await TransacaoService.atualizar(receita.id, payload);
       } else {
-        await supabase.from('transactions').insert(payload);
+        await TransacaoService.criar(idUsuario, payload);
       }
       aoSalvar();
+    } catch (e) {
+      setErro((e as Error).message);
     } finally {
       setSalvando(false);
     }
   };
 
-  const podeSalvar = titulo.trim() && valor && membroId;
+  const podeSalvar = titulo.trim() && valor && membroId && !salvando;
 
   const labelStyle: React.CSSProperties = {
     fontSize: 11, fontWeight: 700, letterSpacing: '.7px',
@@ -91,11 +83,9 @@ export default function ModalReceita({ idUsuario, receita, membros, contas, aoFe
     width: '100%', padding: '14px', borderRadius: 14,
     border: `1.5px solid ${cores.borda}`,
     background: cores.bgTerciario, color: cores.textoCorpo,
-    fontSize: 16,
-    fontFamily: "'DM Sans',sans-serif",
+    fontSize: 16, fontFamily: "'DM Sans',sans-serif",
     outline: 'none', boxSizing: 'border-box',
-    WebkitAppearance: 'none',
-    transition: 'border-color .2s',
+    WebkitAppearance: 'none', transition: 'border-color .2s',
   };
 
   return createPortal(
@@ -103,6 +93,7 @@ export default function ModalReceita({ idUsuario, receita, membros, contas, aoFe
       <div onClick={aoFechar} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,.6)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }} />
 
       <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 9999, background: cores.bgCard, borderRadius: '24px 24px 0 0', height: 'min(92dvh, 92vh)', maxHeight: 'min(92dvh, 92vh)', display: 'flex', flexDirection: 'column', boxShadow: '0 -8px 40px rgba(0,0,0,.25)', animation: 'entrarSheet .3s cubic-bezier(.16,1,.3,1)', overflow: 'hidden' }}>
+
         {/* Cabeçalho */}
         <div style={{ flexShrink: 0, position: 'sticky' as const, top: 0, zIndex: 2, padding: '14px 20px 12px', borderBottom: `1px solid ${cores.borda}`, background: cores.bgCard }}>
           <div style={{ width: 36, height: 4, borderRadius: 99, background: cores.bgTerciario, margin: '0 auto 14px' }} />
@@ -116,6 +107,13 @@ export default function ModalReceita({ idUsuario, receita, membros, contas, aoFe
 
         {/* Conteúdo */}
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' as any, padding: '20px 20px 8px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+          {/* Erro de validação */}
+          {erro && (
+            <div style={{ padding: '12px 14px', borderRadius: 12, background: '#ef444418', border: '1px solid #ef444455', fontSize: 13, color: '#ef4444', fontFamily: "'DM Sans',sans-serif", fontWeight: 600 }}>
+              ⚠️ {erro}
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
@@ -143,9 +141,9 @@ export default function ModalReceita({ idUsuario, receita, membros, contas, aoFe
           <div>
             <label style={labelStyle}>Status</label>
             <div style={{ display: 'flex', gap: 10 }}>
-              {STATUS_RECEITA.map(s => (
-                <button key={s.valor} type="button" onClick={() => setStatus(s.valor)} style={{ flex: 1, padding: '13px', borderRadius: 14, border: `2px solid ${status === s.valor ? s.cor : cores.borda}`, background: status === s.valor ? `${s.cor}18` : cores.bgTerciario, cursor: 'pointer', fontSize: 14, fontWeight: 700, color: status === s.valor ? s.cor : cores.textoSutil, fontFamily: "'DM Sans',sans-serif", transition: 'all .18s' }}>
-                  {s.valor === 'recebido' ? '✅ ' : '⏳ '}{s.rotulo}
+              {STATUS.map(s => (
+                <button key={s.valor} type="button" onClick={() => setStatus(s.valor as typeof status)} style={{ flex: 1, padding: '13px', borderRadius: 14, border: `2px solid ${status === s.valor ? s.cor : cores.borda}`, background: status === s.valor ? `${s.cor}18` : cores.bgTerciario, cursor: 'pointer', fontSize: 14, fontWeight: 700, color: status === s.valor ? s.cor : cores.textoSutil, fontFamily: "'DM Sans',sans-serif", transition: 'all .18s' }}>
+                  {s.emoji} {s.rotulo}
                 </button>
               ))}
             </div>
@@ -164,17 +162,7 @@ export default function ModalReceita({ idUsuario, receita, membros, contas, aoFe
             </div>
           </div>
 
-         {/*contas.length > 0 && (
-            <div>
-              <label style={labelStyle}>Conta</label>
-              <select style={{ ...inputStyle, appearance: 'none', WebkitAppearance: 'none' }} value={contaId} onChange={e => setContaId(e.target.value)}>
-                <option value="">Nenhuma</option>
-                {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-              </select>
-            </div>
-          )*/}
-
-          <button type="button" onClick={() => setRecorrente((v: boolean) => !v)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px', borderRadius: 16, border: `2px solid ${recorrente ? '#22c55e' : cores.borda}`, background: recorrente ? '#22c55e12' : cores.bgTerciario, cursor: 'pointer', textAlign: 'left', transition: 'all .2s' }}>
+          <button type="button" onClick={() => setRecorrente(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px', borderRadius: 16, border: `2px solid ${recorrente ? '#22c55e' : cores.borda}`, background: recorrente ? '#22c55e12' : cores.bgTerciario, cursor: 'pointer', textAlign: 'left', transition: 'all .2s' }}>
             <div style={{ width: 46, height: 26, borderRadius: 99, background: recorrente ? '#22c55e' : cores.bgTerciario, border: `2px solid ${recorrente ? '#22c55e' : cores.borda}`, position: 'relative', flexShrink: 0, transition: 'background .2s' }}>
               <div style={{ position: 'absolute', top: 2, left: recorrente ? 20 : 2, width: 18, height: 18, borderRadius: '50%', background: recorrente ? '#fff' : cores.textoSutil, transition: 'left .2s, background .2s', boxShadow: '0 1px 4px rgba(0,0,0,.2)' }} />
             </div>
@@ -189,7 +177,7 @@ export default function ModalReceita({ idUsuario, receita, membros, contas, aoFe
 
         {/* Rodapé */}
         <div style={{ flexShrink: 0, padding: '12px 20px', paddingBottom: 'max(12px, env(safe-area-inset-bottom))', borderTop: `1px solid ${cores.borda}`, background: cores.bgCard }}>
-          <button type="button" onClick={salvar} disabled={!podeSalvar || salvando} style={{ width: '100%', padding: '17px', borderRadius: 16, border: 'none', cursor: podeSalvar && !salvando ? 'pointer' : 'not-allowed', background: podeSalvar ? 'linear-gradient(135deg,#22c55e,#16a34a)' : cores.bgTerciario, color: podeSalvar ? '#fff' : cores.textoSutil, fontSize: 16, fontWeight: 800, fontFamily: "'DM Sans',sans-serif", boxShadow: podeSalvar ? '0 6px 20px rgba(34,197,94,.4)' : 'none', transition: 'all .25s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, minHeight: 54 }}>
+          <button type="button" onClick={salvar} disabled={!podeSalvar} style={{ width: '100%', padding: '17px', borderRadius: 16, border: 'none', cursor: podeSalvar ? 'pointer' : 'not-allowed', background: podeSalvar ? 'linear-gradient(135deg,#22c55e,#16a34a)' : cores.bgTerciario, color: podeSalvar ? '#fff' : cores.textoSutil, fontSize: 16, fontWeight: 800, fontFamily: "'DM Sans',sans-serif", boxShadow: podeSalvar ? '0 6px 20px rgba(34,197,94,.4)' : 'none', transition: 'all .25s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, minHeight: 54 }}>
             {salvando ? <><Spinner /> Salvando...</> : receita ? '✅ Salvar alterações' : '💰 Adicionar Receita'}
           </button>
         </div>

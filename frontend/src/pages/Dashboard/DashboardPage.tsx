@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../../lib/supabase';
-import { criarTransacoesRecorrentesMes } from '../../utils/recorrentes';
-import { obterPeriodoMes } from '../../utils/months';
-import { obterPeriodoFatura, formatarPeriodoFatura } from '../../utils/fatura';
 import { useTema } from '../../contexts/TemaContexto';
+import { useSessao } from '../../contexts/SessaoContexto';
+import { TransacaoService } from '../../services/TransacaoService';
+import { CartaoService } from '../../services/CartaoService';
+import { ContaService } from '../../services/ContaService';
+import { MembroService } from '../../services/MembroService';
+import { FaturaService } from '../../services/FaturaService';
+import { RecorrenteFacade } from '../../services/RecorrenteFacade';
 import ModalConta from '../Contas/ContaModal';
 import ModalCartao from '../Cartoes/CartaoModal';
-import type { Transacao, Cartao, Conta} from '../../types'; 
-import type { MembroFamilia } from '../../types'; 
-
-interface Props { idUsuario: string; mesAtual: number; anoAtual: number; }
+import type { Transacao, Cartao, Conta, FaturaInfo } from '../../types';
+import type { MembroFamilia } from '../../types';
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
@@ -272,7 +273,8 @@ function CartaoCard({ cartao, fatura, cores, membros, onEditar, onExcluir, onMar
 }
 
 // ─── Página principal ─────────────────────────────────────────────
-export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props) {
+export default function PaginaDashboard() {
+  const { idUsuario, mesAtual, anoAtual } = useSessao();
   const { cores } = useTema();
 
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
@@ -297,51 +299,27 @@ export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props
   useEffect(() => { carregarDados(); }, [idUsuario, mesAtual, anoAtual]);
 
   const calcularFatura = useCallback(async (cartao: Cartao): Promise<FaturaInfo> => {
-    const periodo = obterPeriodoFatura(cartao.fechamento_dia ?? 10, mesAtual, anoAtual);
-
-    const { data: txs } = await supabase
-      .from('transactions').select('valor')
-      .eq('user_id', idUsuario).eq('cartao_id', cartao.id)
-      .eq('tipo', 'despesa')
-      .gte('data', periodo.dataInicioStr).lte('data', periodo.dataFimStr);
-
-    const total = (txs ?? []).reduce((s, t) => s + t.valor, 0);
-
-    const { data: invoice } = await supabase
-      .from('card_invoices').select('id, status')
-      .eq('card_id', cartao.id).eq('mes', mesAtual).eq('ano', anoAtual)
-      .maybeSingle();
-
-    return {
-      total,
-      status: (invoice?.status ?? 'aberta') as 'aberta' | 'paga',
-      jaFechou: periodo.jaFechou,
-      periodo: formatarPeriodoFatura(periodo),
-      invoiceId: invoice?.id ?? null,
-    };
+    return FaturaService.calcular(idUsuario, cartao, mesAtual, anoAtual);
   }, [idUsuario, mesAtual, anoAtual]);
 
   const carregarDados = async () => {
     setCarregando(true);
-    const { dataInicioStr, dataFimStr } = obterPeriodoMes(anoAtual, mesAtual);
-    await criarTransacoesRecorrentesMes(idUsuario, anoAtual, mesAtual);
+    await RecorrenteFacade.sincronizarMes(idUsuario, anoAtual, mesAtual);
 
-    const [resT, resC, resA, resM] = await Promise.all([
-      supabase.from('transactions').select('*, membro:family_members(*)')
-        .eq('user_id', idUsuario).gte('data', dataInicioStr).lte('data', dataFimStr)
-        .order('data', { ascending: false }),
-      supabase.from('cards').select('*').eq('user_id', idUsuario),
-      supabase.from('accounts').select('*').eq('user_id', idUsuario),
-      supabase.from('family_members').select('*').eq('user_id', idUsuario),
+    const [txs, listaCartoes, listaContas, listaMembros] = await Promise.all([
+      TransacaoService.listar(idUsuario, anoAtual, mesAtual),
+      CartaoService.listar(idUsuario),
+      ContaService.listar(idUsuario),
+      MembroService.listar(idUsuario),
     ]);
 
-    if (resT.data) setTransacoes(resT.data);
-    if (resC.data) setCartoes(resC.data);
-    if (resA.data) setContas(resA.data);
-    if (resM.data) setMembros(resM.data);
+    setTransacoes(txs);
+    setCartoes(listaCartoes);
+    setContas(listaContas);
+    setMembros(listaMembros);
 
-    if (resC.data && resC.data.length > 0) {
-      const pairs = await Promise.all(resC.data.map(async c => ({ id: c.id, fatura: await calcularFatura(c) })));
+    if (listaCartoes.length > 0) {
+      const pairs = await Promise.all(listaCartoes.map(async c => ({ id: c.id, fatura: await calcularFatura(c) })));
       const mapa: Record<string, FaturaInfo> = {};
       pairs.forEach(p => { mapa[p.id] = p.fatura; });
       setFaturas(mapa);
@@ -353,11 +331,7 @@ export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props
   const marcarFaturaPaga = async (cartaoId: string, invoiceId: string | null) => {
     setMarcandoPago(cartaoId);
     try {
-      if (invoiceId) {
-        await supabase.from('card_invoices').update({ status: 'paga', pago_em: new Date().toISOString() }).eq('id', invoiceId);
-      } else {
-        await supabase.from('card_invoices').insert({ user_id: idUsuario, card_id: cartaoId, mes: mesAtual, ano: anoAtual, status: 'paga', pago_em: new Date().toISOString() });
-      }
+      await FaturaService.marcarPaga(idUsuario, cartaoId, mesAtual, anoAtual, invoiceId);
       const cartao = cartoes.find(c => c.id === cartaoId);
       if (cartao) {
         const nova = await calcularFatura(cartao);
@@ -368,8 +342,8 @@ export default function PaginaDashboard({ idUsuario, mesAtual, anoAtual }: Props
     }
   };
 
-  const excluirConta = async (id: string) => { if (!window.confirm('Excluir esta conta?')) return; await supabase.from('accounts').delete().eq('id', id); carregarDados(); };
-  const excluirCartao = async (id: string) => { if (!window.confirm('Excluir este cartão?')) return; await supabase.from('cards').delete().eq('id', id); carregarDados(); };
+  const excluirConta   = async (id: string) => { if (!window.confirm('Excluir esta conta?')) return;  await ContaService.excluir(id);   carregarDados(); };
+  const excluirCartao  = async (id: string) => { if (!window.confirm('Excluir este cartão?')) return; await CartaoService.excluir(id);  carregarDados(); };
 
   const receitas = transacoes.filter(t => t.tipo === 'receita' && t.status === 'recebido').reduce((s, t) => s + t.valor, 0);
   const despesas = transacoes.filter(t => t.tipo === 'despesa' && t.status === 'pago').reduce((s, t) => s + t.valor, 0);

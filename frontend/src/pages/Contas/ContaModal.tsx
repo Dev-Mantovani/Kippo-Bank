@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { supabase } from '../../lib/supabase';
 import { useTema } from '../../contexts/TemaContexto';
 import { useScrollLock } from '../../hooks/useScrollLock';
+import { ContaService } from '../../services/ContaService';
+import { validarConta, parsearValor } from '../../validators/transacaoValidator';
 import type { Conta, TipoConta } from '../../types';
 import { createPortal } from 'react-dom';
 
@@ -40,20 +41,14 @@ export default function ModalConta({ idUsuario, conta, aoFechar, aoSalvar }: Pro
   const [salvando, setSalvando] = useState(false);
 
   const salvar = async () => {
-    if (!nome.trim()) return;
+    if (validarConta({ nome })) return;
     setSalvando(true);
     try {
-      const payload = {
-        user_id: idUsuario,
-        nome:    nome.trim(),
-        tipo,
-        saldo:   parseFloat(saldo.replace(',', '.')) || 0,
-        cor,
-      };
+      const payload = { nome: nome.trim(), tipo, saldo: parsearValor(saldo) || 0, cor };
       if (conta) {
-        await supabase.from('accounts').update(payload).eq('id', conta.id);
+        await ContaService.atualizar(conta.id, payload);
       } else {
-        await supabase.from('accounts').insert(payload);
+        await ContaService.criar(idUsuario, payload);
       }
       aoSalvar();
     } finally {

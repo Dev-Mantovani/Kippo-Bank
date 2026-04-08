@@ -1,22 +1,18 @@
 import { useState, useEffect, useMemo } from 'react';
-import { supabase } from '../../lib/supabase';
-import { criarTransacoesRecorrentesMes } from '../../utils/recorrentes';
-import { obterPeriodoMes, NOMES_MESES } from '../../utils/months';
 import { useTema } from '../../contexts/TemaContexto';
+import { useSessao } from '../../contexts/SessaoContexto';
+import { TransacaoService } from '../../services/TransacaoService';
+import { MembroService } from '../../services/MembroService';
+import { ContaService } from '../../services/ContaService';
+import { CartaoService } from '../../services/CartaoService';
+import { RecorrenteFacade } from '../../services/RecorrenteFacade';
 import ModalReceita from '../Receitas/ReceitaModal';
 import ModalDespesa from '../Despesas/DespesaModal';
 import { ModalExcluirRecorrente } from '../../components/ModalExcluirRecorrente/ModalExcluirRecorrente';
 import { ModalEditarRecorrente } from '../../components/ModalEditarRecorrente/ModalEditarRecorrente';
-import { excluirTransacao, eTransacaoOriginal } from '../../utils/excluirTransacao';
-import { editarTransacao } from '../../utils/editarTransacao';
-import type { ModoExclusao } from '../../utils/excluirTransacao';
-import type { ModoEdicao } from '../../utils/editarTransacao';
-import type { Transacao, MembroFamilia, Conta, Cartao } from '../../types';
+import type { ModoExclusao, ModoEdicao, Transacao, MembroFamilia, Conta, Cartao } from '../../types';
 
 interface Props {
-  idUsuario: string;
-  mesAtual: number;
-  anoAtual: number;
   aoMudarMes: (m: number, a: number) => void;
 }
 
@@ -102,7 +98,8 @@ function GrupoFiltro({ titulo, opcoes, selecionado, onSelecionar, cores }: {
 }
 
 // ─── Página principal ─────────────────────────────────────────────
-export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMudarMes: _aoMudarMes }: Props) {
+export default function PaginaTransacoes({ aoMudarMes: _aoMudarMes }: Props) {
+  const { idUsuario, mesAtual, anoAtual } = useSessao();
   const { cores } = useTema();
 
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
@@ -132,22 +129,19 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
 
   const carregarDados = async (skipRecorrentes = false) => {
     setCarregando(true);
-    const { dataInicioStr, dataFimStr } = obterPeriodoMes(anoAtual, mesAtual);
-    if (!skipRecorrentes) await criarTransacoesRecorrentesMes(idUsuario, anoAtual, mesAtual);
+    if (!skipRecorrentes) await RecorrenteFacade.sincronizarMes(idUsuario, anoAtual, mesAtual);
 
-    const [resT, resM, resC, resCa] = await Promise.all([
-      supabase.from('transactions').select('*, membro:family_members(*)')
-        .eq('user_id', idUsuario).gte('data', dataInicioStr).lte('data', dataFimStr)
-        .order('data', { ascending: false }),
-      supabase.from('family_members').select('*').eq('user_id', idUsuario),
-      supabase.from('accounts').select('*').eq('user_id', idUsuario),
-      supabase.from('cards').select('*').eq('user_id', idUsuario),
+    const [txs, listaMembros, listaContas, listaCartoes] = await Promise.all([
+      TransacaoService.listar(idUsuario, anoAtual, mesAtual),
+      MembroService.listar(idUsuario),
+      ContaService.listar(idUsuario),
+      CartaoService.listar(idUsuario),
     ]);
 
-    if (resT.data) setTransacoes(resT.data);
-    if (resM.data) setMembros(resM.data);
-    if (resC.data) setContas(resC.data);
-    if (resCa.data) setCartoes(resCa.data);
+    setTransacoes(txs);
+    setMembros(listaMembros);
+    setContas(listaContas);
+    setCartoes(listaCartoes);
     setCarregando(false);
   };
 
@@ -161,7 +155,7 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
 
   const handleConfirmarEdicao = async (modo: ModoEdicao) => {
     if (!transacaoParaEditar || !payloadPendente) return;
-    await editarTransacao(transacaoParaEditar, payloadPendente, modo);
+    await TransacaoService.editar(transacaoParaEditar, payloadPendente as any, modo);
     fecharEdicao();
     carregarDados(true);
   };
@@ -169,11 +163,11 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
   // ── Exclusão ───────────────────────────────────────────────────
   const handleExcluir = async (transacao: Transacao) => {
     if (transacao.recorrente) {
-      const eOriginal = await eTransacaoOriginal(transacao);
+      const eOriginal = await TransacaoService.eOriginal(transacao);
       if (eOriginal) { setTransacaoParaExcluir(transacao); return; }
     }
     if (!window.confirm('Excluir esta transação?')) return;
-    await excluirTransacao(transacao, 'apenas_esta');
+    await TransacaoService.excluirComModo(transacao, 'apenas_esta');
     carregarDados(true);
   };
 
@@ -642,7 +636,7 @@ export default function PaginaTransacoes({ idUsuario, mesAtual, anoAtual, aoMuda
       {transacaoParaExcluir && (
         <ModalExcluirRecorrente
           transacao={transacaoParaExcluir}
-          onConfirmar={async (modo: ModoExclusao) => { await excluirTransacao(transacaoParaExcluir, modo); setTransacaoParaExcluir(null); carregarDados(true); }}
+          onConfirmar={async (modo: ModoExclusao) => { await TransacaoService.excluirComModo(transacaoParaExcluir, modo); setTransacaoParaExcluir(null); carregarDados(true); }}
           onCancelar={() => setTransacaoParaExcluir(null)}
         />
       )}

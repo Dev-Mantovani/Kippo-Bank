@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from './lib/supabase';
 import { ProvedorTema, useTema } from './contexts/TemaContexto';
+import { SessaoContexto } from './contexts/SessaoContexto';
 import { useTamanhoTela } from './hooks/useTamanhoTela';
+import { UsuarioService } from './services/UsuarioService';
 import Sidebar from './components/Sidebar/Sidebar';
 import HeaderGlobal from './components/HeaderGlobal/HeaderGlobal';
 import MobileSidebar from './components/MobileSidebar/MobileSidebar';
@@ -33,30 +34,25 @@ function AppInterno() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-  verificarUsuario();
+    verificarUsuario();
 
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, sessao) => {
-    if (sessao?.user) {
-      verificarUsuario(); // ✅ busca o perfil completo com nome
-    } else {
-      setUsuarioAtual(null);
-    }
-  });
+    const sub = UsuarioService.inscreverMudancaSessao(logado => {
+      if (logado) verificarUsuario();
+      else setUsuarioAtual(null);
+    });
 
-  return () => subscription.unsubscribe();
-}, []);
+    // inscreverMudancaSessao retorna uma Promise<subscription>
+    return () => {
+      sub.then(s => s.unsubscribe());
+    };
+  }, []);
 
   const verificarUsuario = async () => {
     try {
-      const { data: { session: sessao } } = await supabase.auth.getSession();
-      if (!sessao?.user) { setUsuarioAtual(null); return; }
-      const { data: perfil } = await supabase
-        .from('users_profile')
-        .select('nome, onboarding_completed')
-        .eq('id', sessao.user.id)
-        .maybeSingle();
-      setUsuarioAtual({ id: sessao.user.id, email: sessao.user.email!, nome: perfil?.nome });
-      if (!perfil?.onboarding_completed) setMostrarOnboarding(true);
+      const resultado = await UsuarioService.obterSessao();
+      if (!resultado) { setUsuarioAtual(null); return; }
+      setUsuarioAtual(resultado.usuario);
+      if (!resultado.onboardingCompleto) setMostrarOnboarding(true);
     } catch (e) {
       console.error(e);
       setUsuarioAtual(null);
@@ -66,7 +62,7 @@ function AppInterno() {
   };
 
   const fazerLogout = async () => {
-    await supabase.auth.signOut();
+    await UsuarioService.sair();
     setUsuarioAtual(null);
     setMostrarOnboarding(false);
     setMenuMobileAberto(false);
@@ -116,16 +112,23 @@ function AppInterno() {
     />
   );
 
-  // Altura do header no mobile (com ou sem seletor de meses)
   const HEADER_H_MOBILE = telaAtiva === 'membros' || telaAtiva === 'relatorios' ? 80 : 130;
 
+  // Valor do contexto de sessão — disponível para todas as pages filhas
+  const sessao = {
+    idUsuario: usuarioAtual.id,
+    mesAtual,
+    anoAtual,
+    trocarMes,
+  };
+
   const conteudo = (
-    <>
-      {telaAtiva === 'dashboard'  && <PaginaDashboard  idUsuario={usuarioAtual.id} mesAtual={mesAtual} anoAtual={anoAtual} />}
-      {telaAtiva === 'transacoes' && <PaginaTransacoes idUsuario={usuarioAtual.id} mesAtual={mesAtual} anoAtual={anoAtual} aoMudarMes={trocarMes} />}
-      {telaAtiva === 'relatorios' && <PaginaRelatorios idUsuario={usuarioAtual.id} mesAtual={mesAtual} anoAtual={anoAtual} />}
-      {telaAtiva === 'membros'    && <PaginaMembros    idUsuario={usuarioAtual.id} />}
-    </>
+    <SessaoContexto.Provider value={sessao}>
+      {telaAtiva === 'dashboard'  && <PaginaDashboard  />}
+      {telaAtiva === 'transacoes' && <PaginaTransacoes aoMudarMes={trocarMes} />}
+      {telaAtiva === 'relatorios' && <PaginaRelatorios />}
+      {telaAtiva === 'membros'    && <PaginaMembros    />}
+    </SessaoContexto.Provider>
   );
 
   return (
@@ -173,8 +176,6 @@ function AppInterno() {
       {/* ── MOBILE ──────────────────────────────────────────── */}
       {!ehDesktop && (
         <div style={{ maxWidth: 430, margin: '0 auto', minHeight: '100vh', position: 'relative' }}>
-
-          {/* Header com hamburguer */}
           <HeaderGlobal
             nomeUsuario={usuarioAtual.nome}
             mesAtual={mesAtual}
@@ -185,8 +186,6 @@ function AppInterno() {
             mostrarMeses={telaAtiva !== 'membros'}
             aoAbrirMenu={() => setMenuMobileAberto(true)}
           />
-
-          {/* Conteúdo da página */}
           <div style={{
             paddingTop: HEADER_H_MOBILE,
             paddingBottom: 28,
@@ -196,8 +195,6 @@ function AppInterno() {
           }}>
             {conteudo}
           </div>
-
-          {/* Sidebar deslizante mobile */}
           <MobileSidebar
             aberto={menuMobileAberto}
             telaAtiva={telaAtiva}

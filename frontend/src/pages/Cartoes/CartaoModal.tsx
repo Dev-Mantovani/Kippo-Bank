@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { supabase } from '../../lib/supabase';
 import { useTema } from '../../contexts/TemaContexto';
 import { useScrollLock } from '../../hooks/useScrollLock';
+import { CartaoService } from '../../services/CartaoService';
+import { validarCartao, parsearValor } from '../../validators/transacaoValidator';
 import type { Cartao } from '../../types';
 import { createPortal } from 'react-dom';
 import type { MembroFamilia } from '../../types';
@@ -41,22 +42,20 @@ export default function ModalCartao({ idUsuario, cartao, aoFechar, aoSalvar, mem
   const [membroId, setMembroId] = useState(cartao?.membro_id ?? '');
 
   const salvar = async () => {
-    if (!nome.trim() || !limite) return;
+    if (validarCartao({ nome, limite })) return;
     setSalvando(true);
     try {
       const payload = {
-        user_id: idUsuario,
         nome: nome.trim(),
-        limite: parseFloat(limite.replace(',', '.')) || 0,
-        usado: 0, // calculado dinamicamente pelas transações
+        limite: parsearValor(limite) || 0,
         cor,
         fechamento_dia: fechamentoDia,
         membro_id: membroId || null,
       };
       if (cartao) {
-        await supabase.from('cards').update(payload).eq('id', cartao.id);
+        await CartaoService.atualizar(cartao.id, payload);
       } else {
-        await supabase.from('cards').insert(payload);
+        await CartaoService.criar(idUsuario, payload);
       }
       aoSalvar();
     } finally {

@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
-import { obterPeriodoMes, NOMES_MESES } from '../../utils/months';
+import { NOMES_MESES } from '../../utils/months';
 import { useTema } from '../../contexts/TemaContexto';
 import { useTamanhoTela } from '../../hooks/useTamanhoTela';
+import { useSessao } from '../../contexts/SessaoContexto';
+import { TransacaoService } from '../../services/TransacaoService';
 import type { Transacao } from '../../types';
-
-interface Props { idUsuario: string; mesAtual: number; anoAtual: number; }
 
 type FiltroTipo = 'despesa' | 'receita' | 'consolidado';
 
@@ -123,7 +122,8 @@ function GraficoConsolidado({ receitas, despesas, saldo, cores }: { receitas: nu
 }
 
 // ─── Página principal ─────────────────────────────────────────────
-export default function PaginaRelatorios({ idUsuario, mesAtual, anoAtual }: Props) {
+export default function PaginaRelatorios() {
+  const { idUsuario, mesAtual, anoAtual } = useSessao();
   const { cores } = useTema();
   const { ehDesktop } = useTamanhoTela();
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
@@ -133,9 +133,8 @@ export default function PaginaRelatorios({ idUsuario, mesAtual, anoAtual }: Prop
   useEffect(() => { carregarDados(); }, [idUsuario, mesAtual, anoAtual]);
 
   const carregarDados = async () => {
-    const { dataInicioStr, dataFimStr } = obterPeriodoMes(anoAtual, mesAtual);
-    const { data } = await supabase.from('transactions').select('*').eq('user_id', idUsuario).gte('data', dataInicioStr).lte('data', dataFimStr);
-    if (data) setTransacoes(data);
+    const dados = await TransacaoService.listar(idUsuario, anoAtual, mesAtual);
+    setTransacoes(dados);
   };
 
   // Totais
