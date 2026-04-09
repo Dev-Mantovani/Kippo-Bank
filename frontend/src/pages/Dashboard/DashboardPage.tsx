@@ -10,17 +10,11 @@ import { RecorrenteFacade } from '../../services/RecorrenteFacade';
 import ModalConta from '../Contas/ContaModal';
 import ModalCartao from '../Cartoes/CartaoModal';
 import type { Transacao, Cartao, Conta, FaturaInfo } from '../../types';
+
 import type { MembroFamilia } from '../../types';
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
-interface FaturaInfo {
-  total: number;
-  status: 'aberta' | 'paga';
-  jaFechou: boolean;
-  periodo: string;
-  invoiceId: string | null;
-}
 
 // ─── Ícone chevron animado ────────────────────────────────────────
 function IconChevron({ aberto }: { aberto: boolean }) {
