@@ -9,15 +9,7 @@ import { FaturaService } from '../../services/FaturaService';
 import { RecorrenteFacade } from '../../services/RecorrenteFacade';
 import ModalConta from '../Contas/ContaModal';
 import ModalCartao from '../Cartoes/CartaoModal';
-<<<<<<< HEAD
 import type { Transacao, Cartao, Conta, FaturaInfo } from '../../types';
-
-=======
-import type { Transacao } from '../../types';
-import type { Cartao} from '../../types';
-import type { Conta} from '../../types';
-import type { FaturaInfo } from '../../types';
->>>>>>> ae246126b1b4018a03e0525320d226362b39f566
 import type { MembroFamilia } from '../../types';
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
