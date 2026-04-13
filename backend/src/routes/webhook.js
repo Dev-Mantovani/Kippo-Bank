@@ -1,0 +1,115 @@
+const express = require('express');
+const router = express.Router();
+const messageParser = require('../services/message-parser');
+const supabaseService = require('../services/supabase-transacao');
+
+/**
+ * Webhook para receber mensagens do Evolution API (Hostinger)
+ * POST /webhook/messages
+ *
+ * Evolution API envia no formato:
+ * {
+ *   "event": "messages.upsert",
+ *   "data": {
+ *     "instanceName": "kippo-bank-bot",
+ *     "messages": [{
+ *       "key": { "remoteJid": "5511999999999@s.whatsapp.net" },
+ *       "message": { "conversation": "Gato R$ 50" },
+ *       "messageTimestamp": 1234567890
+ *     }]
+ *   }
+ * }
+ */
+router.post('/messages', async (req, res) => {
+  try {
+    const { event, data } = req.body;
+
+    // Valida se é evento de mensagem
+    if (event !== 'messages.upsert' || !data?.messages) {
+      console.log('Evento ignorado:', event);
+      return res.status(200).json({ processado: false, motivo: 'evento_nao_suportado' });
+    }
+
+    const mensagem = data.messages[0];
+    if (!mensagem) {
+      return res.status(400).json({ erro: 'Mensagem não encontrada' });
+    }
+
+    // Extrai número do remetente
+    const remoteJid = mensagem.key?.remoteJid;
+    const numeroWhatsApp = remoteJid?.split('@')[0];
+
+    if (!numeroWhatsApp) {
+      console.warn('Número não encontrado em:', remoteJid);
+      return res.status(400).json({ erro: 'Número não identificado' });
+    }
+
+    // Extrai texto da mensagem
+    const texto =
+      mensagem.message?.conversation ||
+      mensagem.message?.extendedTextMessage?.text ||
+      mensagem.message?.imageMessage?.caption;
+
+    if (!texto) {
+      console.log('Mensagem sem texto ignorada (pode ser áudio, imagem, etc)');
+      return res.status(200).json({ processado: false, motivo: 'sem_texto' });
+    }
+
+    console.log(`📬 Mensagem de ${numeroWhatsApp}: "${texto}"`);
+
+    // Busca usuário no Supabase
+    const usuario = await supabaseService.buscarUsuarioPorWhatsApp(numeroWhatsApp);
+
+    if (!usuario) {
+      console.warn(`⚠️ Usuário não encontrado para: ${numeroWhatsApp}`);
+      return res.status(200).json({
+        processado: false,
+        motivo: 'usuário_não_encontrado',
+      });
+    }
+
+    // Parse da mensagem
+    const parsed = messageParser.parsarMensagem(texto, usuario.id);
+
+    if (!parsed.parseado) {
+      console.warn(`⚠️ Falha ao parsear: ${parsed.motivo}`);
+      return res.status(200).json({
+        processado: false,
+        motivo: parsed.motivo,
+      });
+    }
+
+    // Salva no Supabase
+    const resultado = await supabaseService.criarTransacao(usuario.id, parsed);
+
+    if (!resultado.sucesso) {
+      console.error(`❌ Erro ao salvar: ${resultado.erro}`);
+      return res.status(200).json({
+        processado: false,
+        motivo: 'erro_ao_salvar',
+      });
+    }
+
+    console.log(`✅ Transação criada: ${parsed.tipo} - ${parsed.categoria} R$ ${parsed.valor}`);
+
+    return res.status(200).json({
+      processado: true,
+      transacao: resultado.transacao?.id,
+    });
+  } catch (erro) {
+    console.error('Erro no webhook:', erro);
+    return res.status(500).json({ erro: 'Erro interno do servidor' });
+  }
+});
+
+/**
+ * Health check
+ */
+router.get('/status', (req, res) => {
+  res.json({
+    status: 'online',
+    timestamp: new Date(),
+  });
+});
+
+module.exports = router;
