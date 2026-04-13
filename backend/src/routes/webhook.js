@@ -30,7 +30,6 @@ function normalizarNumero(numero) {
  */
 router.post('/messages', async (req, res) => {
   try {
-    console.log('🔍 Payload recebido:', JSON.stringify(req.body, null, 2));
     const { event, data } = req.body;
 
     // Valida se é evento de mensagem (Evolution API v2 envia data como objeto único)
@@ -45,6 +44,11 @@ router.post('/messages', async (req, res) => {
 
     // Evolution API v2: data é o objeto da mensagem diretamente
     const mensagem = data;
+
+    // Ignora mensagens de grupos
+    if (mensagem.key?.remoteJid?.endsWith('@g.us')) {
+      return res.status(200).json({ processado: false, motivo: 'mensagem_grupo' });
+    }
 
     // Ignora mensagens enviadas pelo próprio bot
     if (mensagem.key?.fromMe) {
