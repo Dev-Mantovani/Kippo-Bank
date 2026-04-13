@@ -7,7 +7,7 @@ module.exports = {
   },
   supabase: {
     url: process.env.VITE_SUPABASE_URL,
-    key: process.env.VITE_SUPABASE_ANON_KEY,
+    key: process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY,
   },
   server: {
     port: process.env.PORT || 3001,
