@@ -22,6 +22,7 @@ const supabaseService = require('../services/supabase-transacao');
  */
 router.post('/messages', async (req, res) => {
   try {
+    console.log('🔍 Payload recebido:', JSON.stringify(req.body, null, 2));
     const { event, data } = req.body;
 
     // Valida se é evento de mensagem (Evolution API v2 envia data como objeto único)
