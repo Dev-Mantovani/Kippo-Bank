@@ -12,7 +12,7 @@ class SupabaseTransacaoService {
   async criarTransacao(idUsuario, dados) {
     try {
       const { data, error } = await this.supabase
-        .from('transacoes')
+        .from('transactions')
         .insert({
           id_usuario: idUsuario,
           tipo: dados.tipo,
