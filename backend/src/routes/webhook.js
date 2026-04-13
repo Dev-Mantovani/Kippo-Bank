@@ -24,15 +24,22 @@ router.post('/messages', async (req, res) => {
   try {
     const { event, data } = req.body;
 
-    // Valida se é evento de mensagem
-    if (event !== 'messages.upsert' || !data?.messages) {
+    // Valida se é evento de mensagem (Evolution API v2 envia data como objeto único)
+    if (event !== 'messages.upsert') {
       console.log('Evento ignorado:', event);
       return res.status(200).json({ processado: false, motivo: 'evento_nao_suportado' });
     }
 
-    const mensagem = data.messages[0];
-    if (!mensagem) {
-      return res.status(400).json({ erro: 'Mensagem não encontrada' });
+    if (!data) {
+      return res.status(400).json({ erro: 'Dados não encontrados' });
+    }
+
+    // Evolution API v2: data é o objeto da mensagem diretamente
+    const mensagem = data;
+
+    // Ignora mensagens enviadas pelo próprio bot
+    if (mensagem.key?.fromMe) {
+      return res.status(200).json({ processado: false, motivo: 'mensagem_propria' });
     }
 
     // Extrai número do remetente
