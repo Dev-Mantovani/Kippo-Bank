@@ -3,6 +3,14 @@ const router = express.Router();
 const messageParser = require('../services/message-parser');
 const supabaseService = require('../services/supabase-transacao');
 
+// Normaliza número BR: remove +55, adiciona 9º dígito se necessário
+function normalizarNumero(numero) {
+  let n = numero.replace(/\D/g, '');
+  if (n.startsWith('55') && n.length >= 12) n = n.slice(2);
+  if (n.length === 10) n = n.slice(0, 2) + '9' + n.slice(2);
+  return n;
+}
+
 /**
  * Webhook para receber mensagens do Evolution API (Hostinger)
  * POST /webhook/messages
@@ -45,12 +53,16 @@ router.post('/messages', async (req, res) => {
 
     // Extrai número do remetente
     const remoteJid = mensagem.key?.remoteJid;
-    const numeroWhatsApp = remoteJid?.split('@')[0];
+    const numeroRaw = remoteJid?.split('@')[0];
 
-    if (!numeroWhatsApp) {
+    if (!numeroRaw) {
       console.warn('Número não encontrado em:', remoteJid);
       return res.status(400).json({ erro: 'Número não identificado' });
     }
+
+    // Normaliza número: remove código do país 55 e garante 9º dígito (Brasil)
+    const numeroWhatsApp = normalizarNumero(numeroRaw);
+    console.log(`📱 Número normalizado: ${numeroRaw} → ${numeroWhatsApp}`);
 
     // Extrai texto da mensagem
     const texto =
