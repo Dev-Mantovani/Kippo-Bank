@@ -14,15 +14,13 @@ class SupabaseTransacaoService {
       const { data, error } = await this.supabase
         .from('transactions')
         .insert({
-          id_usuario: idUsuario,
+          user_id: idUsuario,
           tipo: dados.tipo,
-          categoria: dados.categoria,
+          titulo: dados.descricao,
           valor: dados.valor,
-          descricao: dados.descricao,
+          categoria: dados.categoria,
           data: dados.dataCriacao.toISOString().split('T')[0],
           status: 'pago',
-          origem: 'whatsapp_bot',
-          confianca_ia: dados.confianca,
           recorrente: false,
         })
         .select();
