@@ -14,13 +14,15 @@ Categorias de RECEITA: Salário, Freelance, Investimentos, Bônus
 
 Regras:
 - Se a mensagem não contiver uma transação financeira clara, retorne: {"transacao": false}
-- Se contiver, retorne: {"transacao": true, "tipo": "...", "categoria": "...", "valor": 0.0}
+- Se contiver, retorne: {"transacao": true, "tipo": "...", "categoria": "...", "valor": 0.0, "titulo": "..."}
+- O "titulo" deve ser curto e descritivo (máximo 4 palavras), ex: "Almoço", "Uber para trabalho", "Cinema com amigos"
 - Retorne APENAS o JSON, sem explicações
 
 Exemplos:
-"gastei no almoço 35 reais" → {"transacao": true, "tipo": "despesa", "categoria": "Alimentação", "valor": 35}
-"paguei uber 22" → {"transacao": true, "tipo": "despesa", "categoria": "Transporte", "valor": 22}
-"recebi salário 4500" → {"transacao": true, "tipo": "receita", "categoria": "Salário", "valor": 4500}
+"gastei no almoço 35 reais" → {"transacao": true, "tipo": "despesa", "categoria": "Alimentação", "valor": 35, "titulo": "Almoço"}
+"paguei uber 22" → {"transacao": true, "tipo": "despesa", "categoria": "Transporte", "valor": 22, "titulo": "Uber"}
+"fui ao cinema hoje gastei 40" → {"transacao": true, "tipo": "despesa", "categoria": "Lazer", "valor": 40, "titulo": "Cinema"}
+"recebi salário 4500" → {"transacao": true, "tipo": "receita", "categoria": "Salário", "valor": 4500, "titulo": "Salário"}
 "oi tudo bem?" → {"transacao": false}`;
 
 async function parsearComIA(texto) {
@@ -49,7 +51,7 @@ async function parsearComIA(texto) {
       tipo: resultado.tipo,
       categoria: resultado.categoria,
       valor: resultado.valor,
-      descricao: texto,
+      descricao: resultado.titulo || texto,
       confianca: 0.9,
       dataCriacao: new Date(),
     };
