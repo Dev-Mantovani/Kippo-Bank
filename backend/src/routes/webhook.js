@@ -57,12 +57,19 @@ router.post('/messages', async (req, res) => {
       mensagem.message?.imageMessage?.caption;
 
     if (!texto && isAudio) {
-      if (!mensagem.base64) {
+      // Debug: logar estrutura do áudio para identificar onde está o base64
+      console.log('🔍 Áudio recebido - messageType:', mensagem.messageType);
+      console.log('🔍 Chaves em data:', Object.keys(mensagem));
+      console.log('🔍 Chaves em message:', Object.keys(mensagem.message || {}));
+
+      const base64 = mensagem.base64 || mensagem.message?.audioMessage?.base64 || mensagem.message?.pttMessage?.base64;
+
+      if (!base64) {
         console.log('Áudio sem base64 ignorado');
         return res.status(200).json({ processado: false, motivo: 'audio_sem_base64' });
       }
       console.log('🎤 Áudio recebido, transcrevendo...');
-      texto = await transcreverAudio(mensagem.base64);
+      texto = await transcreverAudio(base64);
       if (!texto) {
         await enviarMensagem(numeroWhatsApp, '❌ Não consegui entender o áudio. Tente enviar uma mensagem de texto.');
         return res.status(200).json({ processado: false, motivo: 'erro_transcricao' });
