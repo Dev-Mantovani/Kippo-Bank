@@ -6,9 +6,6 @@ class SupabaseTransacaoService {
     this.supabase = createClient(config.supabase.url, config.supabase.key);
   }
 
-  /**
-   * Salva uma transação parseada pelo bot
-   */
   async criarTransacao(idUsuario, dados) {
     try {
       const { data, error } = await this.supabase
@@ -30,24 +27,18 @@ class SupabaseTransacaoService {
         return { sucesso: false, erro: error.message };
       }
 
-      return {
-        sucesso: true,
-        transacao: data?.[0],
-      };
+      return { sucesso: true, transacao: data?.[0] };
     } catch (erro) {
       console.error('Erro ao criar transação:', erro);
       return { sucesso: false, erro: erro.message };
     }
   }
 
-  /**
-   * Busca usuário por número de WhatsApp
-   */
   async buscarUsuarioPorWhatsApp(numero) {
     try {
       const { data, error } = await this.supabase
         .from('users_profile')
-        .select('id')
+        .select('id, nome')
         .eq('whatsapp_number', numero)
         .single();
 
@@ -60,6 +51,44 @@ class SupabaseTransacaoService {
     } catch (erro) {
       console.error('Erro:', erro);
       return null;
+    }
+  }
+
+  async buscarResumoMes(idUsuario, tipo, categoria) {
+    const hoje = new Date();
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+      .toISOString().split('T')[0];
+    const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0)
+      .toISOString().split('T')[0];
+
+    try {
+      // Total do tipo no mês (despesas ou receitas)
+      const { data: totalMesData } = await this.supabase
+        .from('transactions')
+        .select('valor')
+        .eq('user_id', idUsuario)
+        .eq('tipo', tipo)
+        .gte('data', inicioMes)
+        .lte('data', fimMes);
+
+      const totalMes = (totalMesData || []).reduce((acc, t) => acc + Number(t.valor), 0);
+
+      // Total da categoria no mês
+      const { data: totalCatData } = await this.supabase
+        .from('transactions')
+        .select('valor')
+        .eq('user_id', idUsuario)
+        .eq('tipo', tipo)
+        .eq('categoria', categoria)
+        .gte('data', inicioMes)
+        .lte('data', fimMes);
+
+      const totalCategoria = (totalCatData || []).reduce((acc, t) => acc + Number(t.valor), 0);
+
+      return { totalMes, totalCategoria };
+    } catch (erro) {
+      console.error('Erro ao buscar resumo:', erro);
+      return { totalMes: 0, totalCategoria: 0 };
     }
   }
 }

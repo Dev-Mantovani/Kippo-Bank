@@ -105,9 +105,26 @@ router.post('/messages', async (req, res) => {
 
     console.log(`✅ Transação criada: ${parsed.tipo} - ${parsed.categoria} R$ ${parsed.valor}`);
 
-    // Confirmação para o usuário
-    const emoji = parsed.tipo === 'despesa' ? '💸' : '💰';
-    const confirmacao = `${emoji} *${parsed.categoria}* — R$ ${parsed.valor.toFixed(2)} registrado!`;
+    // Busca totais do mês para o resumo
+    const resumo = await supabaseService.buscarResumoMes(usuario.id, parsed.tipo, parsed.categoria);
+
+    // Monta mensagem de confirmação personalizada
+    const primeiroNome = (usuario.nome || 'você').split(' ')[0];
+    const tipoLabel = parsed.tipo === 'despesa' ? 'Despesa' : 'Receita';
+    const emojiTipo = parsed.tipo === 'despesa' ? '💸' : '💰';
+    const emojiCat = parsed.tipo === 'despesa' ? '📊' : '📈';
+
+    const confirmacao = [
+      `✅ *${tipoLabel} registrada, ${primeiroNome}!*`,
+      ``,
+      `📝 *Título:* ${parsed.descricao}`,
+      `${emojiTipo} *Valor:* R$ ${parsed.valor.toFixed(2)}`,
+      `🏷️ *Categoria:* ${parsed.categoria}`,
+      ``,
+      `${emojiCat} *Total de ${tipoLabel}s no mês:* R$ ${resumo.totalMes.toFixed(2)}`,
+      `📂 *Total em ${parsed.categoria} no mês:* R$ ${resumo.totalCategoria.toFixed(2)}`,
+    ].join('\n');
+
     await enviarMensagem(numeroWhatsApp, confirmacao);
 
     return res.status(200).json({ processado: true, transacao: resultado.transacao?.id });
