@@ -1,3 +1,7 @@
+// Polyfill necessário para Node.js 18 (Groq SDK exige File global)
+const { File } = require('node:buffer');
+globalThis.File = File;
+
 const Groq = require('groq-sdk');
 const fs = require('fs');
 const path = require('path');
