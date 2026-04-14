@@ -57,12 +57,7 @@ router.post('/messages', async (req, res) => {
       mensagem.message?.imageMessage?.caption;
 
     if (!texto && isAudio) {
-      // Debug: logar estrutura do áudio para identificar onde está o base64
-      console.log('🔍 Áudio recebido - messageType:', mensagem.messageType);
-      console.log('🔍 Chaves em data:', Object.keys(mensagem));
-      console.log('🔍 Chaves em message:', Object.keys(mensagem.message || {}));
-
-      const base64 = mensagem.base64 || mensagem.message?.audioMessage?.base64 || mensagem.message?.pttMessage?.base64;
+      const base64 = mensagem.base64 || mensagem.message?.base64 || mensagem.message?.audioMessage?.base64;
 
       if (!base64) {
         console.log('Áudio sem base64 ignorado');
