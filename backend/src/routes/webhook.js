@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const messageParser = require('../services/message-parser');
 const supabaseService = require('../services/supabase-transacao');
 const { transcreverAudio } = require('../services/groq-transcricao');
 const { enviarMensagem } = require('../services/evolution-resposta');
+const { parsearComIA } = require('../services/groq-parser');
 
 // Normaliza número BR: remove +55, adiciona 9º dígito se necessário
 function normalizarNumero(numero) {
@@ -85,8 +85,8 @@ router.post('/messages', async (req, res) => {
       return res.status(200).json({ processado: false, motivo: 'usuario_nao_encontrado' });
     }
 
-    // Parse da mensagem
-    const parsed = messageParser.parsarMensagem(texto, usuario.id);
+    // Parse da mensagem com IA
+    const parsed = await parsearComIA(texto);
 
     if (!parsed.parseado) {
       console.warn(`⚠️ Falha ao parsear: ${parsed.motivo}`);
