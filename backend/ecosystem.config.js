@@ -11,7 +11,8 @@ module.exports = {
       VITE_SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1YXVya3ZramtqcGJieXlzdGlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3NzU3ODcsImV4cCI6MjA4NjM1MTc4N30.-ktenlCA2wfYBNHaPeygFOOp0bAkzXsKLKPrGZ5yOQs',
       SUPABASE_SERVICE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1YXVya3ZramtqcGJieXlzdGlqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDc3NTc4NywiZXhwIjoyMDg2MzUxNzg3fQ.kaxdZgk8gz2-3Bz35eKUQhfOeUQ4T6IRVRk8XJ8SJ_c',
       EVOLUTION_API_URL: 'https://evo.gestaocrm.cloud',
-      EVOLUTION_API_KEY: '27WDz7wDhAgKIhCrCU0blz52vDBQgjfh'
+      EVOLUTION_API_KEY: '27WDz7wDhAgKIhCrCU0blz52vDBQgjfh',
+      GROQ_API_KEY: process.env.GROQ_API_KEY || ''
     },
     error_file: './logs/err.log',
     out_file: './logs/out.log',

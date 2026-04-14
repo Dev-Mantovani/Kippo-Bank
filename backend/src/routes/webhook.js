@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const messageParser = require('../services/message-parser');
 const supabaseService = require('../services/supabase-transacao');
+const { transcreverAudio } = require('../services/groq-transcricao');
+const { enviarMensagem } = require('../services/evolution-resposta');
 
 // Normaliza número BR: remove +55, adiciona 9º dígito se necessário
 function normalizarNumero(numero) {
@@ -11,30 +13,11 @@ function normalizarNumero(numero) {
   return n;
 }
 
-/**
- * Webhook para receber mensagens do Evolution API (Hostinger)
- * POST /webhook/messages
- *
- * Evolution API envia no formato:
- * {
- *   "event": "messages.upsert",
- *   "data": {
- *     "instanceName": "kippo-bank-bot",
- *     "messages": [{
- *       "key": { "remoteJid": "5511999999999@s.whatsapp.net" },
- *       "message": { "conversation": "Gato R$ 50" },
- *       "messageTimestamp": 1234567890
- *     }]
- *   }
- * }
- */
 router.post('/messages', async (req, res) => {
   try {
     const { event, data } = req.body;
 
-    // Valida se é evento de mensagem (Evolution API v2 envia data como objeto único)
     if (event !== 'messages.upsert') {
-      console.log('Evento ignorado:', event);
       return res.status(200).json({ processado: false, motivo: 'evento_nao_suportado' });
     }
 
@@ -42,7 +25,6 @@ router.post('/messages', async (req, res) => {
       return res.status(400).json({ erro: 'Dados não encontrados' });
     }
 
-    // Evolution API v2: data é o objeto da mensagem diretamente
     const mensagem = data;
 
     // Ignora mensagens de grupos
@@ -60,22 +42,34 @@ router.post('/messages', async (req, res) => {
     const numeroRaw = remoteJid?.split('@')[0];
 
     if (!numeroRaw) {
-      console.warn('Número não encontrado em:', remoteJid);
       return res.status(400).json({ erro: 'Número não identificado' });
     }
 
-    // Normaliza número: remove código do país 55 e garante 9º dígito (Brasil)
     const numeroWhatsApp = normalizarNumero(numeroRaw);
     console.log(`📱 Número normalizado: ${numeroRaw} → ${numeroWhatsApp}`);
 
-    // Extrai texto da mensagem
-    const texto =
-      mensagem.message?.conversation ||
+    // Verifica se é mensagem de áudio
+    const isAudio = mensagem.messageType === 'audioMessage' || mensagem.messageType === 'pttMessage';
+
+    // Extrai texto (ou transcreve áudio)
+    let texto = mensagem.message?.conversation ||
       mensagem.message?.extendedTextMessage?.text ||
       mensagem.message?.imageMessage?.caption;
 
+    if (!texto && isAudio) {
+      if (!mensagem.base64) {
+        console.log('Áudio sem base64 ignorado');
+        return res.status(200).json({ processado: false, motivo: 'audio_sem_base64' });
+      }
+      console.log('🎤 Áudio recebido, transcrevendo...');
+      texto = await transcreverAudio(mensagem.base64);
+      if (!texto) {
+        await enviarMensagem(numeroWhatsApp, '❌ Não consegui entender o áudio. Tente enviar uma mensagem de texto.');
+        return res.status(200).json({ processado: false, motivo: 'erro_transcricao' });
+      }
+    }
+
     if (!texto) {
-      console.log('Mensagem sem texto ignorada (pode ser áudio, imagem, etc)');
       return res.status(200).json({ processado: false, motivo: 'sem_texto' });
     }
 
@@ -86,10 +80,7 @@ router.post('/messages', async (req, res) => {
 
     if (!usuario) {
       console.warn(`⚠️ Usuário não encontrado para: ${numeroWhatsApp}`);
-      return res.status(200).json({
-        processado: false,
-        motivo: 'usuário_não_encontrado',
-      });
+      return res.status(200).json({ processado: false, motivo: 'usuario_nao_encontrado' });
     }
 
     // Parse da mensagem
@@ -97,10 +88,8 @@ router.post('/messages', async (req, res) => {
 
     if (!parsed.parseado) {
       console.warn(`⚠️ Falha ao parsear: ${parsed.motivo}`);
-      return res.status(200).json({
-        processado: false,
-        motivo: parsed.motivo,
-      });
+      await enviarMensagem(numeroWhatsApp, `❓ Não entendi. Tente: _"Almoço R$ 35"_, _"Uber 20"_ ou _"Salário 5000"_`);
+      return res.status(200).json({ processado: false, motivo: parsed.motivo });
     }
 
     // Salva no Supabase
@@ -108,32 +97,26 @@ router.post('/messages', async (req, res) => {
 
     if (!resultado.sucesso) {
       console.error(`❌ Erro ao salvar: ${resultado.erro}`);
-      return res.status(200).json({
-        processado: false,
-        motivo: 'erro_ao_salvar',
-      });
+      await enviarMensagem(numeroWhatsApp, '❌ Erro ao salvar a transação. Tente novamente.');
+      return res.status(200).json({ processado: false, motivo: 'erro_ao_salvar' });
     }
 
     console.log(`✅ Transação criada: ${parsed.tipo} - ${parsed.categoria} R$ ${parsed.valor}`);
 
-    return res.status(200).json({
-      processado: true,
-      transacao: resultado.transacao?.id,
-    });
+    // Confirmação para o usuário
+    const emoji = parsed.tipo === 'despesa' ? '💸' : '💰';
+    const confirmacao = `${emoji} *${parsed.categoria}* — R$ ${parsed.valor.toFixed(2)} registrado!`;
+    await enviarMensagem(numeroWhatsApp, confirmacao);
+
+    return res.status(200).json({ processado: true, transacao: resultado.transacao?.id });
   } catch (erro) {
     console.error('Erro no webhook:', erro);
     return res.status(500).json({ erro: 'Erro interno do servidor' });
   }
 });
 
-/**
- * Health check
- */
 router.get('/status', (req, res) => {
-  res.json({
-    status: 'online',
-    timestamp: new Date(),
-  });
+  res.json({ status: 'online', timestamp: new Date() });
 });
 
 module.exports = router;
