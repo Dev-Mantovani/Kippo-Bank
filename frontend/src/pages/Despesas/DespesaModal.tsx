@@ -29,7 +29,14 @@ export default function ModalDespesa({ idUsuario, despesa, membros, cartoes, aoF
   const [valor,      setValor]      = useState(despesa?.valor?.toString() ?? '');
   const [categoria,  setCategoria]  = useState(despesa?.categoria ?? 'Alimentação');
   const [status,     setStatus]     = useState(despesa?.status    ?? 'pendente');
-  const [membroId,   setMembroId]   = useState(despesa?.membro_id ?? (membros[0]?.id ?? ''));
+  const [membroId,   setMembroId]   = useState(() => {
+    if (despesa?.membro_id) return despesa.membro_id;
+    if (despesa?.cartao_id) {
+      const cartaoDaDespesa = cartoes.find(c => c.id === despesa.cartao_id);
+      if (cartaoDaDespesa?.membro_id) return cartaoDaDespesa.membro_id;
+    }
+    return membros[0]?.id ?? '';
+  });
   const [data,       setData]       = useState(despesa?.data       ?? hoje);
   const [contaId,    setContaId]    = useState(despesa?.conta_id   ?? '');
   const [cartaoId,   setCartaoId]   = useState(despesa?.cartao_id  ?? '');
