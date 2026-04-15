@@ -20,6 +20,11 @@ function formatarValor(valor) {
   return `R$ ${Number(valor).toFixed(2)}`;
 }
 
+function formatarData(dataStr) {
+  const [, mes, dia] = dataStr.split('-');
+  return `${dia}/${mes}`;
+}
+
 function formatarListaMes(transacoes, tipo) {
   const tipoLabel = tipo === 'despesa' ? 'Despesas' : 'Receitas';
   const emoji = tipo === 'despesa' ? '💸' : '💰';
@@ -29,7 +34,9 @@ function formatarListaMes(transacoes, tipo) {
   }
 
   const total = transacoes.reduce((acc, t) => acc + Number(t.valor), 0);
-  const linhas = transacoes.map(t => `• ${t.titulo} _(${t.categoria})_ — ${formatarValor(t.valor)}`);
+  const linhas = transacoes.map(t =>
+    `• ${formatarData(t.data)} · ${t.titulo} _(${t.categoria})_ — ${formatarValor(t.valor)}`
+  );
 
   return [
     `${emoji} *${tipoLabel} de ${nomeMesAtual()}*`,
@@ -49,7 +56,9 @@ function formatarListaCategoria(transacoes, tipo, categoria) {
   }
 
   const total = transacoes.reduce((acc, t) => acc + Number(t.valor), 0);
-  const linhas = transacoes.map(t => `• ${t.titulo} — ${formatarValor(t.valor)}`);
+  const linhas = transacoes.map(t =>
+    `• ${formatarData(t.data)} · ${t.titulo} — ${formatarValor(t.valor)}`
+  );
 
   return [
     `${emoji} *${tipoLabel} em ${categoria} — ${nomeMesAtual()}*`,
@@ -199,7 +208,24 @@ router.post('/messages', async (req, res) => {
     }
 
     // --- Registrar transação ---
-    const resultado = await supabaseService.criarTransacao(usuario.id, parsed);
+
+    // Lookup de cartão (opcional)
+    let cartaoId = null;
+    let cartaoNome = null;
+    let cartaoStatus = 'Não mencionado';
+
+    if (parsed.cartao) {
+      const cartao = await supabaseService.buscarCartaoUsuario(usuario.id, parsed.cartao);
+      if (cartao) {
+        cartaoId = cartao.id;
+        cartaoNome = cartao.nome;
+        cartaoStatus = cartao.nome;
+      } else {
+        cartaoStatus = `_"${parsed.cartao}" não encontrado_`;
+      }
+    }
+
+    const resultado = await supabaseService.criarTransacao(usuario.id, parsed, cartaoId);
 
     if (!resultado.sucesso) {
       console.error(`❌ Erro ao salvar: ${resultado.erro}`);
@@ -207,7 +233,7 @@ router.post('/messages', async (req, res) => {
       return res.status(200).json({ processado: false, motivo: 'erro_ao_salvar' });
     }
 
-    console.log(`✅ Transação criada: ${parsed.tipo} - ${parsed.categoria} R$ ${parsed.valor}`);
+    console.log(`✅ Transação criada: ${parsed.tipo} - ${parsed.categoria} R$ ${parsed.valor}${cartaoNome ? ` [${cartaoNome}]` : ''}`);
 
     const resumo = await supabaseService.buscarResumoMes(usuario.id, parsed.tipo, parsed.categoria);
 
@@ -222,6 +248,7 @@ router.post('/messages', async (req, res) => {
       `📝 *Título:* ${parsed.descricao}`,
       `${emojiTipo} *Valor:* R$ ${parsed.valor.toFixed(2)}`,
       `🏷️ *Categoria:* ${parsed.categoria}`,
+      `💳 *Cartão:* ${cartaoStatus}`,
       ``,
       `${emojiCat} *Total de ${tipoLabel}s no mês:* R$ ${resumo.totalMes.toFixed(2)}`,
       `📂 *Total em ${parsed.categoria} no mês:* R$ ${resumo.totalCategoria.toFixed(2)}`,

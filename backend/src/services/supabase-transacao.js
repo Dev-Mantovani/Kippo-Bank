@@ -6,7 +6,28 @@ class SupabaseTransacaoService {
     this.supabase = createClient(config.supabase.url, config.supabase.key);
   }
 
-  async criarTransacao(idUsuario, dados) {
+  async buscarCartaoUsuario(idUsuario, nomeCartao) {
+    try {
+      const { data, error } = await this.supabase
+        .from('cards')
+        .select('id, nome')
+        .eq('user_id', idUsuario)
+        .ilike('nome', `%${nomeCartao}%`)
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erro ao buscar cartão:', error);
+        return null;
+      }
+      return data;
+    } catch (erro) {
+      console.error('Erro:', erro);
+      return null;
+    }
+  }
+
+  async criarTransacao(idUsuario, dados, cartaoId = null) {
     try {
       const { data, error } = await this.supabase
         .from('transactions')
@@ -19,6 +40,7 @@ class SupabaseTransacaoService {
           data: dados.dataCriacao.toISOString().split('T')[0],
           status: 'pago',
           recorrente: false,
+          ...(cartaoId && { cartao_id: cartaoId }),
         })
         .select();
 
@@ -64,7 +86,7 @@ class SupabaseTransacaoService {
     try {
       const { data, error } = await this.supabase
         .from('transactions')
-        .select('titulo, valor, categoria')
+        .select('titulo, valor, categoria, data')
         .eq('user_id', idUsuario)
         .eq('tipo', tipo)
         .gte('data', inicioMes)
@@ -92,7 +114,7 @@ class SupabaseTransacaoService {
     try {
       const { data, error } = await this.supabase
         .from('transactions')
-        .select('titulo, valor')
+        .select('titulo, valor, data')
         .eq('user_id', idUsuario)
         .eq('tipo', tipo)
         .eq('categoria', categoria)

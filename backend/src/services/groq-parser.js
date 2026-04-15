@@ -5,7 +5,8 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const SYSTEM_PROMPT = `Você é um assistente financeiro do Kippo Bank. Analise mensagens em português e classifique a intenção em um destes tipos:
 
 ## TIPO 1 — Registrar transação
-Retorne: {"intent": "transacao", "tipo": "despesa"|"receita", "categoria": "...", "valor": 0.0, "titulo": "..."}
+Retorne: {"intent": "transacao", "tipo": "despesa"|"receita", "categoria": "...", "valor": 0.0, "titulo": "...", "cartao": "nome do cartão ou banco"|null}
+O campo "cartao" deve conter o nome do cartão/banco mencionado (ex: "Nubank", "Itaú", "Bradesco", "Inter", "C6") ou null se não mencionado.
 
 Categorias de DESPESA:
 - Alimentação: restaurante, almoço, jantar, lanche, café, delivery, ifood, rappi, pizza, hamburguer, padaria, mercado rápido
@@ -47,10 +48,10 @@ Regras:
 - Em caso de dúvida entre categorias, escolha a mais específica
 
 Exemplos:
-"gastei no almoço 35 reais" → {"intent": "transacao", "tipo": "despesa", "categoria": "Alimentação", "valor": 35, "titulo": "Almoço"}
-"paguei uber 22" → {"intent": "transacao", "tipo": "despesa", "categoria": "Transporte", "valor": 22, "titulo": "Uber"}
-"comprei peças de computador 800 reais" → {"intent": "transacao", "tipo": "despesa", "categoria": "Tecnologia", "valor": 800, "titulo": "Peças de computador"}
-"recebi salário 4500" → {"intent": "transacao", "tipo": "receita", "categoria": "Salário", "valor": 4500, "titulo": "Salário"}
+"gastei no almoço 35 reais" → {"intent": "transacao", "tipo": "despesa", "categoria": "Alimentação", "valor": 35, "titulo": "Almoço", "cartao": null}
+"paguei uber 22 no nubank" → {"intent": "transacao", "tipo": "despesa", "categoria": "Transporte", "valor": 22, "titulo": "Uber", "cartao": "Nubank"}
+"comprei peças de computador 800 no itaú" → {"intent": "transacao", "tipo": "despesa", "categoria": "Tecnologia", "valor": 800, "titulo": "Peças de computador", "cartao": "Itaú"}
+"recebi salário 4500" → {"intent": "transacao", "tipo": "receita", "categoria": "Salário", "valor": 4500, "titulo": "Salário", "cartao": null}
 "o que compõe minhas despesas esse mês?" → {"intent": "consulta_mes", "tipo": "despesa"}
 "quais foram meus gastos esse mês" → {"intent": "consulta_mes", "tipo": "despesa"}
 "minhas despesas de alimentação" → {"intent": "consulta_categoria", "tipo": "despesa", "categoria": "Alimentação"}
@@ -80,6 +81,7 @@ async function parsearComIA(texto) {
         categoria: resultado.categoria,
         valor: resultado.valor,
         descricao: resultado.titulo || texto,
+        cartao: resultado.cartao || null,
         dataCriacao: new Date(),
       };
     }
