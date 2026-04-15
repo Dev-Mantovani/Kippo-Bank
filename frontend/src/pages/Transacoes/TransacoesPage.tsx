@@ -121,12 +121,16 @@ export default function PaginaTransacoes({ aoMudarMes: _aoMudarMes, filtroInicia
   const [filtroSemCartao, setFiltroSemCartao] = useState(false);
   const [painelAberto,    setPainelAberto]    = useState(false);
 
-  // Aplica filtro vindo de notificação
+  // Aplica filtro vindo de notificação — limpa tudo antes de aplicar
   useEffect(() => {
     if (!filtroInicial) return;
-    if (filtroInicial.tipo)      setFiltroTipo(filtroInicial.tipo);
-    if (filtroInicial.status !== undefined) setFiltroStatus(filtroInicial.status ?? '');
-    if (filtroInicial.semCartao !== undefined) setFiltroSemCartao(filtroInicial.semCartao);
+    setFiltroCategoria('');
+    setFiltroMembro('');
+    setFiltroConta('');
+    setFiltroCartao('');
+    setFiltroStatus(filtroInicial.status ?? '');
+    setFiltroSemCartao(filtroInicial.semCartao ?? false);
+    setFiltroTipo(filtroInicial.tipo ?? 'todos');
   }, [filtroInicial]);
 
   // ── Edição / Modal ─────────────────────────────────────────────
