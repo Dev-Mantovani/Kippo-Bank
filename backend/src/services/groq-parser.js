@@ -2,15 +2,12 @@ const Groq = require('groq-sdk');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-const SYSTEM_PROMPT = `Você é um assistente financeiro do Kippo Bank. Seu trabalho é extrair informações de transações financeiras de mensagens em português informal ou formal.
+const SYSTEM_PROMPT = `Você é um assistente financeiro do Kippo Bank. Analise mensagens em português e classifique a intenção em um destes tipos:
 
-Analise a mensagem e retorne um JSON com:
-- tipo: "despesa" ou "receita"
-- categoria: escolha a mais adequada da lista abaixo
-- valor: número (apenas o valor numérico, sem símbolo)
-- titulo: descrição curta e objetiva (máximo 4 palavras)
+## TIPO 1 — Registrar transação
+Retorne: {"intent": "transacao", "tipo": "despesa"|"receita", "categoria": "...", "valor": 0.0, "titulo": "..."}
 
-Categorias de DESPESA e seus exemplos:
+Categorias de DESPESA:
 - Alimentação: restaurante, almoço, jantar, lanche, café, delivery, ifood, rappi, pizza, hamburguer, padaria, mercado rápido
 - Supermercado: compras no mercado, feira, atacado, hortifruti
 - Transporte: uber, 99, taxi, ônibus, metrô, passagem, combustível, gasolina, estacionamento
@@ -31,21 +28,34 @@ Categorias de RECEITA:
 - Bônus: bônus, comissão, prêmio, gratificação
 - Outros: qualquer receita que não se encaixe nas anteriores
 
+## TIPO 2 — Consultar todas as despesas ou receitas do mês
+Palavras-chave: "o que gastei", "minhas despesas", "quais despesas", "lista de gastos", "o que compõe", "ver despesas", "minhas receitas", "o que recebi"
+Retorne: {"intent": "consulta_mes", "tipo": "despesa"|"receita"}
+Padrão quando não especificado: tipo = "despesa"
+
+## TIPO 3 — Consultar despesas ou receitas de uma categoria específica
+Palavras-chave: "despesas de X", "gastos em X", "o que gastei em X", "compras de X", "receitas de X"
+Retorne: {"intent": "consulta_categoria", "tipo": "despesa"|"receita", "categoria": "..."}
+Use o mesmo nome de categoria da lista acima (ex: "Alimentação", "Transporte").
+
+## TIPO 4 — Mensagem sem intenção financeira
+Retorne: {"intent": "desconhecido"}
+
 Regras:
-- Se a mensagem não contiver uma transação financeira clara, retorne: {"transacao": false}
-- Se contiver, retorne: {"transacao": true, "tipo": "...", "categoria": "...", "valor": 0.0, "titulo": "..."}
 - Retorne APENAS o JSON, sem explicações
+- titulo: máximo 4 palavras, descritivo
 - Em caso de dúvida entre categorias, escolha a mais específica
 
 Exemplos:
-"gastei no almoço 35 reais" → {"transacao": true, "tipo": "despesa", "categoria": "Alimentação", "valor": 35, "titulo": "Almoço"}
-"comprei uma placa de vídeo por 1200" → {"transacao": true, "tipo": "despesa", "categoria": "Tecnologia", "valor": 1200, "titulo": "Placa de vídeo"}
-"paguei uber 22" → {"transacao": true, "tipo": "despesa", "categoria": "Transporte", "valor": 22, "titulo": "Uber"}
-"fui ao cinema hoje gastei 40" → {"transacao": true, "tipo": "despesa", "categoria": "Lazer", "valor": 40, "titulo": "Cinema"}
-"comprei peças de computador 800 reais" → {"transacao": true, "tipo": "despesa", "categoria": "Tecnologia", "valor": 800, "titulo": "Peças de computador"}
-"recebi salário 4500" → {"transacao": true, "tipo": "receita", "categoria": "Salário", "valor": 4500, "titulo": "Salário"}
-"oi tudo bem?" → {"transacao": false}
-"e aí?" → {"transacao": false}`;
+"gastei no almoço 35 reais" → {"intent": "transacao", "tipo": "despesa", "categoria": "Alimentação", "valor": 35, "titulo": "Almoço"}
+"paguei uber 22" → {"intent": "transacao", "tipo": "despesa", "categoria": "Transporte", "valor": 22, "titulo": "Uber"}
+"comprei peças de computador 800 reais" → {"intent": "transacao", "tipo": "despesa", "categoria": "Tecnologia", "valor": 800, "titulo": "Peças de computador"}
+"recebi salário 4500" → {"intent": "transacao", "tipo": "receita", "categoria": "Salário", "valor": 4500, "titulo": "Salário"}
+"o que compõe minhas despesas esse mês?" → {"intent": "consulta_mes", "tipo": "despesa"}
+"quais foram meus gastos esse mês" → {"intent": "consulta_mes", "tipo": "despesa"}
+"minhas despesas de alimentação" → {"intent": "consulta_categoria", "tipo": "despesa", "categoria": "Alimentação"}
+"o que gastei em transporte" → {"intent": "consulta_categoria", "tipo": "despesa", "categoria": "Transporte"}
+"oi tudo bem?" → {"intent": "desconhecido"}`;
 
 async function parsearComIA(texto) {
   try {
@@ -62,24 +72,32 @@ async function parsearComIA(texto) {
     const conteudo = resposta.choices[0]?.message?.content?.trim();
     const resultado = JSON.parse(conteudo);
 
-    if (!resultado.transacao) {
-      return { parseado: false, motivo: 'Sem transação identificada na mensagem' };
+    if (resultado.intent === 'transacao') {
+      console.log(`🤖 IA parseou: ${resultado.tipo} - ${resultado.categoria} R$ ${resultado.valor}`);
+      return {
+        intent: 'transacao',
+        tipo: resultado.tipo,
+        categoria: resultado.categoria,
+        valor: resultado.valor,
+        descricao: resultado.titulo || texto,
+        dataCriacao: new Date(),
+      };
     }
 
-    console.log(`🤖 IA parseou: ${resultado.tipo} - ${resultado.categoria} R$ ${resultado.valor}`);
+    if (resultado.intent === 'consulta_mes') {
+      console.log(`🔍 IA detectou consulta mensal: ${resultado.tipo}`);
+      return { intent: 'consulta_mes', tipo: resultado.tipo || 'despesa' };
+    }
 
-    return {
-      parseado: true,
-      tipo: resultado.tipo,
-      categoria: resultado.categoria,
-      valor: resultado.valor,
-      descricao: resultado.titulo || texto,
-      confianca: 0.9,
-      dataCriacao: new Date(),
-    };
+    if (resultado.intent === 'consulta_categoria') {
+      console.log(`🔍 IA detectou consulta por categoria: ${resultado.tipo} - ${resultado.categoria}`);
+      return { intent: 'consulta_categoria', tipo: resultado.tipo || 'despesa', categoria: resultado.categoria };
+    }
+
+    return { intent: 'desconhecido' };
   } catch (erro) {
     console.error('Erro no parser IA:', erro.message);
-    return { parseado: false, motivo: 'Erro ao processar com IA' };
+    return { intent: 'desconhecido' };
   }
 }
 

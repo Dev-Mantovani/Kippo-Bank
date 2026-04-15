@@ -54,6 +54,63 @@ class SupabaseTransacaoService {
     }
   }
 
+  async buscarTransacoesMes(idUsuario, tipo) {
+    const hoje = new Date();
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+      .toISOString().split('T')[0];
+    const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0)
+      .toISOString().split('T')[0];
+
+    try {
+      const { data, error } = await this.supabase
+        .from('transactions')
+        .select('titulo, valor, categoria')
+        .eq('user_id', idUsuario)
+        .eq('tipo', tipo)
+        .gte('data', inicioMes)
+        .lte('data', fimMes)
+        .order('data', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar transações:', error);
+        return [];
+      }
+      return data || [];
+    } catch (erro) {
+      console.error('Erro:', erro);
+      return [];
+    }
+  }
+
+  async buscarTransacoesPorCategoria(idUsuario, tipo, categoria) {
+    const hoje = new Date();
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+      .toISOString().split('T')[0];
+    const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0)
+      .toISOString().split('T')[0];
+
+    try {
+      const { data, error } = await this.supabase
+        .from('transactions')
+        .select('titulo, valor')
+        .eq('user_id', idUsuario)
+        .eq('tipo', tipo)
+        .eq('categoria', categoria)
+        .gte('data', inicioMes)
+        .lte('data', fimMes)
+        .order('data', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar transações por categoria:', error);
+        return [];
+      }
+      return data || [];
+    } catch (erro) {
+      console.error('Erro:', erro);
+      return [];
+    }
+  }
+
   async buscarResumoMes(idUsuario, tipo, categoria) {
     const hoje = new Date();
     const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1)

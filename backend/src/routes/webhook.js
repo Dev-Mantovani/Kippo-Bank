@@ -12,6 +12,54 @@ function primeiroNome(nome) {
   return (nome || 'você').split(' ')[0];
 }
 
+function nomeMesAtual() {
+  return new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+}
+
+function formatarValor(valor) {
+  return `R$ ${Number(valor).toFixed(2)}`;
+}
+
+function formatarListaMes(transacoes, tipo) {
+  const tipoLabel = tipo === 'despesa' ? 'Despesas' : 'Receitas';
+  const emoji = tipo === 'despesa' ? '💸' : '💰';
+
+  if (!transacoes.length) {
+    return `📊 Nenhuma ${tipoLabel.toLowerCase()} registrada em ${nomeMesAtual()}.`;
+  }
+
+  const total = transacoes.reduce((acc, t) => acc + Number(t.valor), 0);
+  const linhas = transacoes.map(t => `• ${t.titulo} _(${t.categoria})_ — ${formatarValor(t.valor)}`);
+
+  return [
+    `${emoji} *${tipoLabel} de ${nomeMesAtual()}*`,
+    ``,
+    ...linhas,
+    ``,
+    `💰 *Total: ${formatarValor(total)}*`,
+  ].join('\n');
+}
+
+function formatarListaCategoria(transacoes, tipo, categoria) {
+  const tipoLabel = tipo === 'despesa' ? 'Despesas' : 'Receitas';
+  const emoji = tipo === 'despesa' ? '📂' : '📈';
+
+  if (!transacoes.length) {
+    return `${emoji} Nenhuma ${tipoLabel.toLowerCase()} em *${categoria}* em ${nomeMesAtual()}.`;
+  }
+
+  const total = transacoes.reduce((acc, t) => acc + Number(t.valor), 0);
+  const linhas = transacoes.map(t => `• ${t.titulo} — ${formatarValor(t.valor)}`);
+
+  return [
+    `${emoji} *${tipoLabel} em ${categoria} — ${nomeMesAtual()}*`,
+    ``,
+    ...linhas,
+    ``,
+    `💰 *Total: ${formatarValor(total)}*`,
+  ].join('\n');
+}
+
 function deveEnviarSaudacao(userId) {
   const hoje = new Date().toDateString();
   if (ultimaSaudacao.get(userId) === hoje) return false;
@@ -130,13 +178,27 @@ router.post('/messages', async (req, res) => {
     // Parse da mensagem com IA
     const parsed = await parsearComIA(texto);
 
-    if (!parsed.parseado) {
-      console.warn(`⚠️ Falha ao parsear: ${parsed.motivo}`);
-      await enviarMensagem(numeroWhatsApp, `❓ Não entendi. Tente: _"Almoço R$ 35"_, _"Uber 20"_ ou _"Salário 5000"_`);
-      return res.status(200).json({ processado: false, motivo: parsed.motivo });
+    // --- Consulta: todas as despesas/receitas do mês ---
+    if (parsed.intent === 'consulta_mes') {
+      const transacoes = await supabaseService.buscarTransacoesMes(usuario.id, parsed.tipo);
+      await enviarMensagem(numeroWhatsApp, formatarListaMes(transacoes, parsed.tipo));
+      return res.status(200).json({ processado: true, intent: 'consulta_mes' });
     }
 
-    // Salva no Supabase
+    // --- Consulta: despesas/receitas de uma categoria ---
+    if (parsed.intent === 'consulta_categoria') {
+      const transacoes = await supabaseService.buscarTransacoesPorCategoria(usuario.id, parsed.tipo, parsed.categoria);
+      await enviarMensagem(numeroWhatsApp, formatarListaCategoria(transacoes, parsed.tipo, parsed.categoria));
+      return res.status(200).json({ processado: true, intent: 'consulta_categoria' });
+    }
+
+    // --- Intenção não reconhecida ---
+    if (parsed.intent !== 'transacao') {
+      await enviarMensagem(numeroWhatsApp, `❓ Não entendi. Tente:\n• _"Almoço R$ 35"_\n• _"Uber 20"_\n• _"O que gastei esse mês?"_\n• _"Despesas de Alimentação"_`);
+      return res.status(200).json({ processado: false, motivo: 'intencao_desconhecida' });
+    }
+
+    // --- Registrar transação ---
     const resultado = await supabaseService.criarTransacao(usuario.id, parsed);
 
     if (!resultado.sucesso) {
@@ -147,10 +209,8 @@ router.post('/messages', async (req, res) => {
 
     console.log(`✅ Transação criada: ${parsed.tipo} - ${parsed.categoria} R$ ${parsed.valor}`);
 
-    // Busca totais do mês para o resumo
     const resumo = await supabaseService.buscarResumoMes(usuario.id, parsed.tipo, parsed.categoria);
 
-    // Monta mensagem de confirmação personalizada
     const nome1 = primeiroNome(usuario.nome);
     const tipoLabel = parsed.tipo === 'despesa' ? 'Despesa' : 'Receita';
     const emojiTipo = parsed.tipo === 'despesa' ? '💸' : '💰';
