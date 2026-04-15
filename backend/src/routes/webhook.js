@@ -5,6 +5,43 @@ const { transcreverAudio } = require('../services/groq-transcricao');
 const { enviarMensagem } = require('../services/evolution-resposta');
 const { parsearComIA } = require('../services/groq-parser');
 
+// Controle de saudação diária por usuário (in-memory)
+const ultimaSaudacao = new Map();
+
+function primeiroNome(nome) {
+  return (nome || 'você').split(' ')[0];
+}
+
+function deveEnviarSaudacao(userId) {
+  const hoje = new Date().toDateString();
+  if (ultimaSaudacao.get(userId) === hoje) return false;
+  ultimaSaudacao.set(userId, hoje);
+  return true;
+}
+
+function gerarSaudacao(nome) {
+  const hora = new Date().getHours();
+  let periodo, emoji;
+  if (hora < 12)       { periodo = 'bom dia';    emoji = '🌅'; }
+  else if (hora < 18)  { periodo = 'boa tarde';  emoji = '☀️'; }
+  else                 { periodo = 'boa noite';  emoji = '🌙'; }
+
+  const nome1 = primeiroNome(nome);
+
+  return [
+    `🐰 *Kippo Bank*`,
+    ``,
+    `${emoji} ${periodo.charAt(0).toUpperCase() + periodo.slice(1)}, *${nome1}*! Que ótimo ter você por aqui!`,
+    ``,
+    `Estou pronto para registrar suas finanças. É só mandar uma mensagem ou áudio como:`,
+    `• _"Almoço R$ 35"_`,
+    `• _"Paguei o uber 22 reais"_`,
+    `• _"Recebi salário 5000"_`,
+    ``,
+    `Vamos manter suas finanças em dia? 💪`,
+  ].join('\n');
+}
+
 // Normaliza número BR: remove +55, adiciona 9º dígito se necessário
 function normalizarNumero(numero) {
   let n = numero.replace(/\D/g, '');
@@ -85,6 +122,11 @@ router.post('/messages', async (req, res) => {
       return res.status(200).json({ processado: false, motivo: 'usuario_nao_encontrado' });
     }
 
+    // Saudação diária
+    if (deveEnviarSaudacao(usuario.id)) {
+      await enviarMensagem(numeroWhatsApp, gerarSaudacao(usuario.nome));
+    }
+
     // Parse da mensagem com IA
     const parsed = await parsearComIA(texto);
 
@@ -109,13 +151,13 @@ router.post('/messages', async (req, res) => {
     const resumo = await supabaseService.buscarResumoMes(usuario.id, parsed.tipo, parsed.categoria);
 
     // Monta mensagem de confirmação personalizada
-    const primeiroNome = (usuario.nome || 'você').split(' ')[0];
+    const nome1 = primeiroNome(usuario.nome);
     const tipoLabel = parsed.tipo === 'despesa' ? 'Despesa' : 'Receita';
     const emojiTipo = parsed.tipo === 'despesa' ? '💸' : '💰';
     const emojiCat = parsed.tipo === 'despesa' ? '📊' : '📈';
 
     const confirmacao = [
-      `✅ *${tipoLabel} registrada, ${primeiroNome}!*`,
+      `✅ *${tipoLabel} registrada, ${nome1}!*`,
       ``,
       `📝 *Título:* ${parsed.descricao}`,
       `${emojiTipo} *Valor:* R$ ${parsed.valor.toFixed(2)}`,

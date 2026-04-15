@@ -62,27 +62,16 @@ class SupabaseTransacaoService {
       .toISOString().split('T')[0];
 
     try {
-      // Total do tipo no mês (despesas ou receitas)
-      const { data: totalMesData } = await this.supabase
-        .from('transactions')
-        .select('valor')
-        .eq('user_id', idUsuario)
-        .eq('tipo', tipo)
-        .gte('data', inicioMes)
-        .lte('data', fimMes);
+      const [{ data: totalMesData }, { data: totalCatData }] = await Promise.all([
+        this.supabase.from('transactions').select('valor')
+          .eq('user_id', idUsuario).eq('tipo', tipo)
+          .gte('data', inicioMes).lte('data', fimMes),
+        this.supabase.from('transactions').select('valor')
+          .eq('user_id', idUsuario).eq('tipo', tipo).eq('categoria', categoria)
+          .gte('data', inicioMes).lte('data', fimMes),
+      ]);
 
       const totalMes = (totalMesData || []).reduce((acc, t) => acc + Number(t.valor), 0);
-
-      // Total da categoria no mês
-      const { data: totalCatData } = await this.supabase
-        .from('transactions')
-        .select('valor')
-        .eq('user_id', idUsuario)
-        .eq('tipo', tipo)
-        .eq('categoria', categoria)
-        .gte('data', inicioMes)
-        .lte('data', fimMes);
-
       const totalCategoria = (totalCatData || []).reduce((acc, t) => acc + Number(t.valor), 0);
 
       return { totalMes, totalCategoria };
