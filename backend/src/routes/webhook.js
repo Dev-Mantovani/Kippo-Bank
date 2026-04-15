@@ -5,8 +5,6 @@ const { transcreverAudio } = require('../services/groq-transcricao');
 const { enviarMensagem } = require('../services/evolution-resposta');
 const { parsearComIA } = require('../services/groq-parser');
 
-// Controle de saudação diária por usuário (in-memory)
-const ultimaSaudacao = new Map();
 
 function primeiroNome(nome) {
   return (nome || 'você').split(' ')[0];
@@ -69,11 +67,9 @@ function formatarListaCategoria(transacoes, tipo, categoria) {
   ].join('\n');
 }
 
-function deveEnviarSaudacao(userId) {
-  const hoje = new Date().toDateString();
-  if (ultimaSaudacao.get(userId) === hoje) return false;
-  ultimaSaudacao.set(userId, hoje);
-  return true;
+function deveEnviarSaudacao(usuario) {
+  const hoje = new Date().toISOString().split('T')[0];
+  return usuario.ultima_saudacao !== hoje;
 }
 
 function gerarSaudacao(nome) {
@@ -180,8 +176,11 @@ router.post('/messages', async (req, res) => {
     }
 
     // Saudação diária
-    if (deveEnviarSaudacao(usuario.id)) {
-      await enviarMensagem(numeroWhatsApp, gerarSaudacao(usuario.nome));
+    if (deveEnviarSaudacao(usuario)) {
+      await Promise.all([
+        enviarMensagem(numeroWhatsApp, gerarSaudacao(usuario.nome)),
+        supabaseService.marcarSaudacaoHoje(usuario.id),
+      ]);
     }
 
     // Parse da mensagem com IA

@@ -60,7 +60,7 @@ class SupabaseTransacaoService {
     try {
       const { data, error } = await this.supabase
         .from('users_profile')
-        .select('id, nome')
+        .select('id, nome, ultima_saudacao')
         .eq('whatsapp_number', numero)
         .single();
 
@@ -74,6 +74,14 @@ class SupabaseTransacaoService {
       console.error('Erro:', erro);
       return null;
     }
+  }
+
+  async marcarSaudacaoHoje(idUsuario) {
+    const hoje = new Date().toISOString().split('T')[0];
+    await this.supabase
+      .from('users_profile')
+      .update({ ultima_saudacao: hoje })
+      .eq('id', idUsuario);
   }
 
   async buscarTransacoesMes(idUsuario, tipo) {
