@@ -11,9 +11,11 @@ import ModalDespesa from '../Despesas/DespesaModal';
 import { ModalExcluirRecorrente } from '../../components/ModalExcluirRecorrente/ModalExcluirRecorrente';
 import { ModalEditarRecorrente } from '../../components/ModalEditarRecorrente/ModalEditarRecorrente';
 import type { ModoExclusao, ModoEdicao, Transacao, MembroFamilia, Conta, Cartao } from '../../types';
+import type { FiltroTransacao } from '../../hooks/useNotificacoes';
 
 interface Props {
   aoMudarMes: (m: number, a: number) => void;
+  filtroInicial?: FiltroTransacao;
 }
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -98,7 +100,7 @@ function GrupoFiltro({ titulo, opcoes, selecionado, onSelecionar, cores }: {
 }
 
 // ─── Página principal ─────────────────────────────────────────────
-export default function PaginaTransacoes({ aoMudarMes: _aoMudarMes }: Props) {
+export default function PaginaTransacoes({ aoMudarMes: _aoMudarMes, filtroInicial }: Props) {
   const { idUsuario, mesAtual, anoAtual } = useSessao();
   const { cores } = useTema();
 
@@ -114,9 +116,18 @@ export default function PaginaTransacoes({ aoMudarMes: _aoMudarMes }: Props) {
   const [filtroCategoria, setFiltroCategoria] = useState('');
   const [filtroMembro, setFiltroMembro] = useState('');
   const [filtroConta, setFiltroConta] = useState('');
-  const [filtroCartao, setFiltroCartao] = useState('');
-  const [filtroStatus, setFiltroStatus] = useState('');
-  const [painelAberto, setPainelAberto] = useState(false);
+  const [filtroCartao,    setFiltroCartao]    = useState('');
+  const [filtroStatus,    setFiltroStatus]    = useState('');
+  const [filtroSemCartao, setFiltroSemCartao] = useState(false);
+  const [painelAberto,    setPainelAberto]    = useState(false);
+
+  // Aplica filtro vindo de notificação
+  useEffect(() => {
+    if (!filtroInicial) return;
+    if (filtroInicial.tipo)      setFiltroTipo(filtroInicial.tipo);
+    if (filtroInicial.status !== undefined) setFiltroStatus(filtroInicial.status ?? '');
+    if (filtroInicial.semCartao !== undefined) setFiltroSemCartao(filtroInicial.semCartao);
+  }, [filtroInicial]);
 
   // ── Edição / Modal ─────────────────────────────────────────────
   const [modalTipo, setModalTipo] = useState<'receita' | 'despesa' | null>(null);
@@ -193,11 +204,12 @@ export default function PaginaTransacoes({ aoMudarMes: _aoMudarMes }: Props) {
     if (filtroConta && t.conta_id !== filtroConta) return false;
     if (filtroCartao && t.cartao_id !== filtroCartao) return false;
     if (filtroStatus && t.status !== filtroStatus) return false;
+    if (filtroSemCartao && t.cartao_id) return false;
     return true;
-  }), [transacoes, filtroTipo, busca, filtroCategoria, filtroMembro, filtroConta, filtroCartao, filtroStatus]);
+  }), [transacoes, filtroTipo, busca, filtroCategoria, filtroMembro, filtroConta, filtroCartao, filtroStatus, filtroSemCartao]);
 
   // ── Contagem de filtros ativos (exceto tipo e busca) ──────────
-  const qtdFiltrosExtras = [filtroCategoria, filtroMembro, filtroConta, filtroCartao, filtroStatus].filter(Boolean).length;
+  const qtdFiltrosExtras = [filtroCategoria, filtroMembro, filtroConta, filtroCartao, filtroStatus, filtroSemCartao ? 'x' : ''].filter(Boolean).length;
   const temFiltroAtivo = qtdFiltrosExtras > 0;
 
   const limparTudo = () => {
@@ -206,6 +218,7 @@ export default function PaginaTransacoes({ aoMudarMes: _aoMudarMes }: Props) {
     setFiltroConta('');
     setFiltroCartao('');
     setFiltroStatus('');
+    setFiltroSemCartao(false);
   };
 
   // ── Agrupamento por data ───────────────────────────────────────
@@ -390,6 +403,9 @@ export default function PaginaTransacoes({ aoMudarMes: _aoMudarMes }: Props) {
                 onRemover={() => setFiltroStatus('')}
                 cores={cores}
               />
+            )}
+            {filtroSemCartao && (
+              <ChipAtivo rotulo="💳 Sem cartão" onRemover={() => setFiltroSemCartao(false)} cores={cores} />
             )}
             <button
               onClick={limparTudo}

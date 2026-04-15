@@ -3,6 +3,8 @@ import { ProvedorTema, useTema } from './contexts/TemaContexto';
 import { SessaoContexto } from './contexts/SessaoContexto';
 import { useTamanhoTela } from './hooks/useTamanhoTela';
 import { UsuarioService } from './services/UsuarioService';
+import { CartaoService } from './services/CartaoService';
+import { TransacaoService } from './services/TransacaoService';
 import Sidebar from './components/Sidebar/Sidebar';
 import HeaderGlobal from './components/HeaderGlobal/HeaderGlobal';
 import MobileSidebar from './components/MobileSidebar/MobileSidebar';
@@ -13,7 +15,9 @@ import PaginaRelatorios from './pages/Relatorios/RelatoriosPage';
 import PaginaMembros from './pages/Membros/MembrosPage';
 import PaginaAutenticacao from './pages/Auth/AuthPage';
 import PaginaOnboarding from './pages/Onboarding/OnboardingPage';
-import type { Usuario } from './types';
+import { useNotificacoes } from './hooks/useNotificacoes';
+import type { Usuario, Cartao, Transacao } from './types';
+import type { Notificacao, FiltroTransacao } from './hooks/useNotificacoes';
 
 type Tela = 'dashboard' | 'transacoes' | 'relatorios' | 'membros';
 
@@ -30,6 +34,11 @@ function AppInterno() {
   const [visivel,            setVisivel]            = useState(true);
   const [atualizando,        setAtualizando]        = useState(false);
   const [menuMobileAberto,   setMenuMobileAberto]   = useState(false);
+  const [cartoesNotif,       setCartoesNotif]       = useState<Cartao[]>([]);
+  const [transacoesNotif,    setTransacoesNotif]    = useState<Transacao[]>([]);
+  const [filtroTransacoes,   setFiltroTransacoes]   = useState<FiltroTransacao | undefined>(undefined);
+
+  const notificacoes = useNotificacoes(cartoesNotif, transacoesNotif);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -41,11 +50,20 @@ function AppInterno() {
       else setUsuarioAtual(null);
     });
 
-    // inscreverMudancaSessao retorna uma Promise<subscription>
-    return () => {
-      sub.then(s => s.unsubscribe());
-    };
+    return () => { sub.then(s => s.unsubscribe()); };
   }, []);
+
+  // Busca dados para notificações sempre que usuário/mês mudar
+  useEffect(() => {
+    if (!usuarioAtual) return;
+    Promise.all([
+      CartaoService.listar(usuarioAtual.id),
+      TransacaoService.listar(usuarioAtual.id, anoAtual, mesAtual),
+    ]).then(([cartoes, txs]) => {
+      setCartoesNotif(cartoes);
+      setTransacoesNotif(txs);
+    }).catch(() => {});
+  }, [usuarioAtual, mesAtual, anoAtual]);
 
   const verificarUsuario = async () => {
     try {
@@ -94,13 +112,17 @@ function AppInterno() {
     );
 
   const mudarTela = (tela: Tela) => {
-    if (tela === telaAtiva) return;
     setVisivel(false);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       setTelaAtiva(tela);
       setVisivel(true);
     }, 150);
+  };
+
+  const aoClicarNotificacao = (notif: Notificacao) => {
+    if (notif.filtro) setFiltroTransacoes({ ...notif.filtro });
+    mudarTela(notif.navegarPara as Tela);
   };
 
   if (carregando)        return <TelaDeCarga />;
@@ -125,7 +147,7 @@ function AppInterno() {
   const conteudo = (
     <SessaoContexto.Provider value={sessao}>
       {telaAtiva === 'dashboard'  && <PaginaDashboard  />}
-      {telaAtiva === 'transacoes' && <PaginaTransacoes aoMudarMes={trocarMes} />}
+      {telaAtiva === 'transacoes' && <PaginaTransacoes aoMudarMes={trocarMes} filtroInicial={filtroTransacoes} />}
       {telaAtiva === 'relatorios' && <PaginaRelatorios />}
       {telaAtiva === 'membros'    && <PaginaMembros    />}
     </SessaoContexto.Provider>
@@ -159,6 +181,8 @@ function AppInterno() {
             aoProximoMes={irProximoMes}
             aoSair={fazerLogout}
             mostrarMeses={telaAtiva !== 'membros'}
+            notificacoes={notificacoes}
+            aoClicarNotificacao={aoClicarNotificacao}
           />
           <div style={{
             marginLeft: 60,
@@ -185,6 +209,8 @@ function AppInterno() {
             aoSair={fazerLogout}
             mostrarMeses={telaAtiva !== 'membros'}
             aoAbrirMenu={() => setMenuMobileAberto(true)}
+            notificacoes={notificacoes}
+            aoClicarNotificacao={aoClicarNotificacao}
           />
           <div style={{
             paddingTop: HEADER_H_MOBILE,
