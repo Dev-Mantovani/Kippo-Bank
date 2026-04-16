@@ -27,12 +27,13 @@ class SupabaseTransacaoService {
     }
   }
 
-  async criarTransacao(idUsuario, dados, cartaoId = null) {
+  async criarTransacao(idUsuario, membroId, dados, cartaoId = null) {
     try {
       const { data, error } = await this.supabase
         .from('transactions')
         .insert({
           user_id: idUsuario,
+          membro_id: membroId,
           tipo: dados.tipo,
           titulo: dados.descricao,
           valor: dados.valor,
@@ -56,16 +57,16 @@ class SupabaseTransacaoService {
     }
   }
 
-  async buscarUsuarioPorWhatsApp(numero) {
+  async buscarMembroPorWhatsApp(numero) {
     try {
       const { data, error } = await this.supabase
-        .from('users_profile')
-        .select('id, nome, ultima_saudacao')
+        .from('family_members')
+        .select('id, nome, user_id, ultima_saudacao')
         .eq('whatsapp_number', numero)
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Erro ao buscar usuário:', error);
+        console.error('Erro ao buscar membro:', error);
         return null;
       }
 
@@ -76,12 +77,12 @@ class SupabaseTransacaoService {
     }
   }
 
-  async marcarSaudacaoHoje(idUsuario) {
+  async marcarSaudacaoHoje(membroId) {
     const hoje = new Date().toISOString().split('T')[0];
     await this.supabase
-      .from('users_profile')
+      .from('family_members')
       .update({ ultima_saudacao: hoje })
-      .eq('id', idUsuario);
+      .eq('id', membroId);
   }
 
   async buscarTransacoesMes(idUsuario, tipo) {

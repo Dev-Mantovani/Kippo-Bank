@@ -167,19 +167,19 @@ router.post('/messages', async (req, res) => {
 
     console.log(`📬 Mensagem de ${numeroWhatsApp}: "${texto}"`);
 
-    // Busca usuário no Supabase
-    const usuario = await supabaseService.buscarUsuarioPorWhatsApp(numeroWhatsApp);
+    // Busca membro no Supabase via family_members
+    const membro = await supabaseService.buscarMembroPorWhatsApp(numeroWhatsApp);
 
-    if (!usuario) {
-      console.warn(`⚠️ Usuário não encontrado para: ${numeroWhatsApp}`);
-      return res.status(200).json({ processado: false, motivo: 'usuario_nao_encontrado' });
+    if (!membro) {
+      console.warn(`⚠️ Membro não encontrado para: ${numeroWhatsApp}`);
+      return res.status(200).json({ processado: false, motivo: 'membro_nao_encontrado' });
     }
 
     // Saudação diária
-    if (deveEnviarSaudacao(usuario)) {
+    if (deveEnviarSaudacao(membro)) {
       await Promise.all([
-        enviarMensagem(numeroWhatsApp, gerarSaudacao(usuario.nome)),
-        supabaseService.marcarSaudacaoHoje(usuario.id),
+        enviarMensagem(numeroWhatsApp, gerarSaudacao(membro.nome)),
+        supabaseService.marcarSaudacaoHoje(membro.id),
       ]);
     }
 
@@ -188,14 +188,14 @@ router.post('/messages', async (req, res) => {
 
     // --- Consulta: todas as despesas/receitas do mês ---
     if (parsed.intent === 'consulta_mes') {
-      const transacoes = await supabaseService.buscarTransacoesMes(usuario.id, parsed.tipo);
+      const transacoes = await supabaseService.buscarTransacoesMes(membro.user_id, parsed.tipo);
       await enviarMensagem(numeroWhatsApp, formatarListaMes(transacoes, parsed.tipo));
       return res.status(200).json({ processado: true, intent: 'consulta_mes' });
     }
 
     // --- Consulta: despesas/receitas de uma categoria ---
     if (parsed.intent === 'consulta_categoria') {
-      const transacoes = await supabaseService.buscarTransacoesPorCategoria(usuario.id, parsed.tipo, parsed.categoria);
+      const transacoes = await supabaseService.buscarTransacoesPorCategoria(membro.user_id, parsed.tipo, parsed.categoria);
       await enviarMensagem(numeroWhatsApp, formatarListaCategoria(transacoes, parsed.tipo, parsed.categoria));
       return res.status(200).json({ processado: true, intent: 'consulta_categoria' });
     }
@@ -214,7 +214,7 @@ router.post('/messages', async (req, res) => {
     let cartaoStatus = 'Não mencionado';
 
     if (parsed.cartao) {
-      const cartao = await supabaseService.buscarCartaoUsuario(usuario.id, parsed.cartao);
+      const cartao = await supabaseService.buscarCartaoUsuario(membro.user_id, parsed.cartao);
       if (cartao) {
         cartaoId = cartao.id;
         cartaoNome = cartao.nome;
@@ -224,7 +224,7 @@ router.post('/messages', async (req, res) => {
       }
     }
 
-    const resultado = await supabaseService.criarTransacao(usuario.id, parsed, cartaoId);
+    const resultado = await supabaseService.criarTransacao(membro.user_id, membro.id, parsed, cartaoId);
 
     if (!resultado.sucesso) {
       console.error(`❌ Erro ao salvar: ${resultado.erro}`);
@@ -234,9 +234,9 @@ router.post('/messages', async (req, res) => {
 
     console.log(`✅ Transação criada: ${parsed.tipo} - ${parsed.categoria} R$ ${parsed.valor}${cartaoNome ? ` [${cartaoNome}]` : ''}`);
 
-    const resumo = await supabaseService.buscarResumoMes(usuario.id, parsed.tipo, parsed.categoria);
+    const resumo = await supabaseService.buscarResumoMes(membro.user_id, parsed.tipo, parsed.categoria);
 
-    const nome1 = primeiroNome(usuario.nome);
+    const nome1 = primeiroNome(membro.nome);
     const tipoLabel = parsed.tipo === 'despesa' ? 'Despesa' : 'Receita';
     const emojiTipo = parsed.tipo === 'despesa' ? '💸' : '💰';
     const emojiCat = parsed.tipo === 'despesa' ? '📊' : '📈';
