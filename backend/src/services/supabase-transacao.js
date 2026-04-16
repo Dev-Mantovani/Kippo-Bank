@@ -38,7 +38,7 @@ class SupabaseTransacaoService {
           titulo: dados.descricao,
           valor: dados.valor,
           categoria: dados.categoria,
-          data: dados.dataCriacao.toISOString().split('T')[0],
+          data: new Date(dados.dataCriacao.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })).toISOString().split('T')[0],
           status: 'pago',
           recorrente: false,
           ...(cartaoId && { cartao_id: cartaoId }),

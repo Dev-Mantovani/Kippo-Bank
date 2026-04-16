@@ -67,13 +67,17 @@ function formatarListaCategoria(transacoes, tipo, categoria) {
   ].join('\n');
 }
 
+function agoraBR() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+}
+
 function deveEnviarSaudacao(usuario) {
-  const hoje = new Date().toISOString().split('T')[0];
+  const hoje = agoraBR().toISOString().split('T')[0];
   return usuario.ultima_saudacao !== hoje;
 }
 
 function gerarSaudacao(nome) {
-  const hora = new Date().getHours();
+  const hora = agoraBR().getHours();
   let periodo, emoji;
   if (hora < 12)       { periodo = 'bom dia';    emoji = '🌅'; }
   else if (hora < 18)  { periodo = 'boa tarde';  emoji = '☀️'; }
