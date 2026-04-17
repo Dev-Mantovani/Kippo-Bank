@@ -7,6 +7,7 @@ export interface RelacaoItem {
 }
 
 export const RELACOES: RelacaoItem[] = [
+  { valor: 'eu',      rotulo: 'Eu',       emoji: '😊' },
   { valor: 'conjuge', rotulo: 'Cônjuge',  emoji: '💑' },
   { valor: 'filho',   rotulo: 'Filho(a)', emoji: '👶' },
   { valor: 'mae',     rotulo: 'Mãe',      emoji: '👩' },

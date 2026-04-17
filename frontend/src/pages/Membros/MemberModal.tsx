@@ -18,6 +18,7 @@ const CORES_AVATAR = [
 ];
 
 const RELACOES: { valor: TipoRelacao; rotulo: string; emoji: string }[] = [
+  { valor: 'eu',      rotulo: 'Eu',       emoji: '😊' },
   { valor: 'conjuge', rotulo: 'Cônjuge',  emoji: '💑' },
   { valor: 'filho',   rotulo: 'Filho(a)', emoji: '👶' },
   { valor: 'mae',     rotulo: 'Mãe',      emoji: '👩' },
@@ -30,7 +31,7 @@ export default function ModalMembro({ idUsuario, membro, aoFechar, aoSalvar }: P
   const { cores } = useTema();
 
   const [nome,       setNome]       = useState(membro?.nome             ?? '');
-  const [relacao,    setRelacao]    = useState<TipoRelacao>(membro?.relacao ?? 'conjuge');
+  const [relacao,    setRelacao]    = useState<TipoRelacao>(membro?.relacao ?? 'eu');
   const [cor,        setCor]        = useState(membro?.cor               ?? '#6366f1');
   const [whatsapp,   setWhatsapp]   = useState(membro?.whatsapp_number   ?? '');
   const [fotoPreview, setFotoPreview] = useState<string | null>(membro?.avatar_url ?? null);

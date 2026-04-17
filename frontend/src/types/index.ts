@@ -3,7 +3,7 @@ export type TipoFamilia   = 'sozinho' | 'casado' | 'morando_junto' | 'familia';
 export type TipoStatus    = 'pago' | 'pendente' | 'recebido';
 export type TipoTransacao = 'receita' | 'despesa';
 export type TipoConta     = 'corrente' | 'poupanca' | 'investimento';
-export type TipoRelacao   = 'conjuge' | 'filho' | 'mae' | 'pai' | 'irmao' | 'outro';
+export type TipoRelacao   = 'eu' | 'conjuge' | 'filho' | 'mae' | 'pai' | 'irmao' | 'outro';
 export type ModoEdicao    = 'apenas_esta' | 'todas';
 export type ModoExclusao  = 'apenas_esta' | 'todas';
 

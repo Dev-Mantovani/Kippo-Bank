@@ -15,14 +15,17 @@ const CORES_AVATAR = [
   '#3b82f6', '#06b6d4', '#a855f7', '#84cc16',
 ];
 
-const RELACOES: { valor: TipoRelacao; rotulo: string; emoji: string }[] = [
+const TODAS_RELACOES: { valor: TipoRelacao; rotulo: string; emoji: string }[] = [
+  { valor: 'eu',      rotulo: 'Eu',       emoji: '😊' },
+  { valor: 'pai',     rotulo: 'Pai',      emoji: '👨' },
+  { valor: 'mae',     rotulo: 'Mãe',      emoji: '👩' },
   { valor: 'conjuge', rotulo: 'Cônjuge',  emoji: '💑' },
   { valor: 'filho',   rotulo: 'Filho(a)', emoji: '👶' },
-  { valor: 'mae',     rotulo: 'Mãe',      emoji: '👩' },
-  { valor: 'pai',     rotulo: 'Pai',      emoji: '👨' },
-  { valor: 'irmao',   rotulo: 'Irmão(ã)',emoji: '🧑' },
+  { valor: 'irmao',   rotulo: 'Irmão(ã)', emoji: '🧑' },
   { valor: 'outro',   rotulo: 'Outro',    emoji: '👤' },
 ];
+
+const RELACOES_OUTROS = TODAS_RELACOES.filter(r => r.valor !== 'eu');
 
 const TIPOS_FAMILIA: { valor: TipoFamilia; rotulo: string; icone: string; desc: string }[] = [
   { valor: 'sozinho',       rotulo: 'Sozinho(a)',   icone: '👤', desc: 'Só eu' },
@@ -47,11 +50,22 @@ const membroVazio = (): MembroForm => ({
 export default function PaginaOnboarding({ idUsuario, aoConcluir }: Props) {
   const { cores } = useTema();
   const [passo,       setPasso]       = useState(1);
-  const [nome,        setNome]        = useState('');
-  const [tipoFamilia, setTipoFamilia] = useState<TipoFamilia>('familia');
-  const [membros,     setMembros]     = useState<MembroForm[]>([]);
-  const [form,        setForm]        = useState<MembroForm>(membroVazio());
   const [salvando,    setSalvando]    = useState(false);
+
+  // Passo 1 — perfil do dono
+  const [nome,            setNome]            = useState('');
+  const [corDono,         setCorDono]         = useState('#6366f1');
+  const [relacaoDono,     setRelacaoDono]     = useState<TipoRelacao>('eu');
+  const [wppDono,         setWppDono]         = useState('');
+  const [fotoPreviewDono, setFotoPreviewDono] = useState<string | null>(null);
+  const [arquivoDono,     setArquivoDono]     = useState<File | null>(null);
+
+  // Passo 2 — tipo de família
+  const [tipoFamilia, setTipoFamilia] = useState<TipoFamilia>('familia');
+
+  // Passo 3 — outros membros
+  const [membros, setMembros] = useState<MembroForm[]>([]);
+  const [form,    setForm]    = useState<MembroForm>(membroVazio());
 
   /* ── helpers do formulário de membro ── */
   const atualizarForm = (campos: Partial<MembroForm>) =>
@@ -66,35 +80,48 @@ export default function PaginaOnboarding({ idUsuario, aoConcluir }: Props) {
   const removerMembro = (i: number) =>
     setMembros(prev => prev.filter((_, idx) => idx !== i));
 
+  /* ── upload de foto ── */
+  const uploadAvatar = async (arquivo: File, prefixo: string): Promise<string | null> => {
+    const ext    = arquivo.name.split('.').pop() ?? 'jpg';
+    const caminho = `${idUsuario}/${prefixo}_${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from('avatars')
+      .upload(caminho, arquivo, { upsert: true, cacheControl: '3600' });
+    if (error) return null;
+    const { data } = supabase.storage.from('avatars').getPublicUrl(caminho);
+    return data.publicUrl;
+  };
+
   /* ── finalizar onboarding ── */
   const finalizar = async () => {
     setSalvando(true);
     try {
+      // Atualiza perfil do usuário
       await supabase
         .from('users_profile')
         .update({ nome: nome.trim(), family_type: tipoFamilia, onboarding_completed: true })
         .eq('id', idUsuario);
 
+      // Insere o dono como primeiro membro
+      const avatarDono = arquivoDono ? await uploadAvatar(arquivoDono, 'dono') : null;
+      const wppFormatado = wppDono.replace(/\D/g, '') || null;
+      await supabase.from('family_members').insert({
+        user_id:          idUsuario,
+        nome:             nome.trim(),
+        relacao:          relacaoDono,
+        cor:              corDono,
+        avatar_url:       avatarDono,
+        whatsapp_number:  wppFormatado,
+      });
+
+      // Insere os demais membros
       for (const m of membros) {
-        let avatarUrl: string | null = null;
-
-        if (m.arquivo) {
-          const ext    = m.arquivo.name.split('.').pop() ?? 'jpg';
-          const caminho = `${idUsuario}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-          const { error: errUp } = await supabase.storage
-            .from('avatars')
-            .upload(caminho, m.arquivo, { upsert: true, cacheControl: '3600' });
-          if (!errUp) {
-            const { data } = supabase.storage.from('avatars').getPublicUrl(caminho);
-            avatarUrl = data.publicUrl;
-          }
-        }
-
+        const avatarUrl = m.arquivo ? await uploadAvatar(m.arquivo, 'membro') : null;
         await supabase.from('family_members').insert({
-          user_id: idUsuario,
-          nome:    m.nome.trim(),
-          relacao: m.relacao,
-          cor:     m.cor,
+          user_id:    idUsuario,
+          nome:       m.nome.trim(),
+          relacao:    m.relacao,
+          cor:        m.cor,
           avatar_url: avatarUrl,
         });
       }
@@ -158,27 +185,145 @@ export default function PaginaOnboarding({ idUsuario, aoConcluir }: Props) {
         display: 'flex', flexDirection: 'column', gap: 22,
       }}>
 
-        {/* ══ PASSO 1: Nome ══ */}
+        {/* ══ PASSO 1: Seu perfil ══ */}
         {passo === 1 && (
           <>
             <div>
               <div style={{ fontSize: 26, fontWeight: 900, color: cores.textoTitulo, lineHeight: 1.2 }}>
-                👋 Qual é o seu nome?
+                👋 Seu perfil
               </div>
               <div style={{ fontSize: 14, color: cores.textoSutil, marginTop: 6 }}>
-                Vamos personalizar sua experiência
+                Você será o primeiro membro da sua família no app
               </div>
             </div>
 
+            {/* Avatar + cor */}
+            <div style={{
+              background: `linear-gradient(135deg, ${corDono}11, ${corDono}06)`,
+              border: `1.5px solid ${corDono}30`,
+              borderRadius: 22, padding: '20px 16px',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+            }}>
+              <AvatarPicker
+                nome={nome}
+                cor={corDono}
+                fotoAtual={fotoPreviewDono}
+                aoSelecionarArquivo={(arquivo, preview) => { setArquivoDono(arquivo); setFotoPreviewDono(preview); }}
+                aoRemoverFoto={() => { setArquivoDono(null); setFotoPreviewDono(null); }}
+                tamanho={96}
+                coresUI={coresAvatarPicker}
+              />
+
+              {/* Paleta de cores */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                {CORES_AVATAR.map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCorDono(c)}
+                    style={{
+                      width: 28, height: 28, borderRadius: '50%',
+                      background: c, border: 'none', padding: 0, cursor: 'pointer',
+                      outline: corDono === c ? `3px solid ${c}` : '3px solid transparent',
+                      outlineOffset: 3,
+                      transform: corDono === c ? 'scale(1.22)' : 'scale(1)',
+                      boxShadow: corDono === c ? `0 0 0 5px ${c}30` : 'none',
+                      transition: 'all .15s',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    {corDono === c && (
+                      <svg width="12" height="12" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Nome */}
             <div>
-              <label style={labelStyle}>Nome</label>
+              <label style={labelStyle}>Seu nome</label>
               <input
-                style={inputStyle}
+                style={{ ...inputStyle, borderColor: nome ? corDono + '60' : cores.borda }}
                 value={nome}
                 onChange={e => setNome(e.target.value)}
                 placeholder="Ex: André"
                 autoFocus
+                onFocus={e => e.target.style.borderColor = corDono}
+                onBlur={e => e.target.style.borderColor = nome ? corDono + '60' : cores.borda}
               />
+            </div>
+
+            {/* Relação */}
+            <div>
+              <label style={labelStyle}>Sua relação na família</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 7 }}>
+                {TODAS_RELACOES.map(r => {
+                  const sel = relacaoDono === r.valor;
+                  return (
+                    <button
+                      key={r.valor}
+                      type="button"
+                      onClick={() => setRelacaoDono(r.valor)}
+                      style={{
+                        padding: '10px 4px', borderRadius: 13,
+                        border: `2px solid ${sel ? corDono : cores.borda}`,
+                        background: sel ? `${corDono}18` : cores.bgTerciario,
+                        cursor: 'pointer',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                        transition: 'all .15s',
+                        transform: sel ? 'scale(1.05)' : 'scale(1)',
+                      }}
+                    >
+                      <span style={{ fontSize: 20, lineHeight: 1 }}>{r.emoji}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: sel ? corDono : cores.textoSutil, fontFamily: "'DM Sans',sans-serif" }}>
+                        {r.rotulo}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* WhatsApp */}
+            <div>
+              <label style={labelStyle}>
+                WhatsApp <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, opacity: .7 }}>(opcional)</span>
+              </label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 16, pointerEvents: 'none' }}>📱</span>
+                <input
+                  value={wppDono}
+                  onChange={e => setWppDono(e.target.value)}
+                  placeholder="Ex: 11987654321"
+                  inputMode="numeric"
+                  style={{
+                    ...inputStyle,
+                    padding: '13px 42px 13px 42px',
+                    borderColor: wppDono ? corDono + '60' : cores.borda,
+                  }}
+                  onFocus={e => e.target.style.borderColor = corDono}
+                  onBlur={e => e.target.style.borderColor = wppDono ? corDono + '60' : cores.borda}
+                />
+                {wppDono && (
+                  <button
+                    type="button"
+                    onClick={() => setWppDono('')}
+                    style={{
+                      position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                      width: 26, height: 26, borderRadius: 8,
+                      border: 'none', background: cores.bgSecundario,
+                      cursor: 'pointer', color: cores.textoSutil,
+                      fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >×</button>
+                )}
+              </div>
+              <div style={{ fontSize: 11, color: cores.textoSutil, marginTop: 5 }}>
+                Com DDD, só números. Usado para registrar gastos pelo WhatsApp.
+              </div>
             </div>
 
             <button
@@ -188,11 +333,11 @@ export default function PaginaOnboarding({ idUsuario, aoConcluir }: Props) {
                 padding: '16px', borderRadius: 16, border: 'none',
                 cursor: nome.trim() ? 'pointer' : 'not-allowed',
                 background: nome.trim()
-                  ? 'linear-gradient(135deg,#3b82f6,#1d4ed8)'
+                  ? `linear-gradient(135deg, ${corDono}, ${corDono}cc)`
                   : cores.bgTerciario,
                 color: nome.trim() ? '#fff' : cores.textoSutil,
                 fontSize: 16, fontWeight: 800,
-                boxShadow: nome.trim() ? '0 6px 20px rgba(59,130,246,.4)' : 'none',
+                boxShadow: nome.trim() ? `0 6px 20px ${corDono}55` : 'none',
                 transition: 'all .2s',
               }}
             >
@@ -269,15 +414,50 @@ export default function PaginaOnboarding({ idUsuario, aoConcluir }: Props) {
           </>
         )}
 
-        {/* ══ PASSO 3: Membros ══ */}
+        {/* ══ PASSO 3: Outros membros ══ */}
         {passo === 3 && (
           <>
             <div>
               <div style={{ fontSize: 26, fontWeight: 900, color: cores.textoTitulo, lineHeight: 1.2 }}>
-                👨‍👩‍👧 Adicione os membros
+                👨‍👩‍👧 Outros membros
               </div>
               <div style={{ fontSize: 14, color: cores.textoSutil, marginTop: 6 }}>
-                Quem divide as finanças com você?
+                Quem mais divide as finanças com você? (opcional)
+              </div>
+            </div>
+
+            {/* Chip do dono já adicionado */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 14px',
+              background: `${corDono}12`,
+              borderRadius: 14,
+              border: `1.5px solid ${corDono}30`,
+            }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                background: fotoPreviewDono ? '#000' : corDono,
+                overflow: 'hidden',
+                boxShadow: `0 0 0 2px ${corDono}44`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {fotoPreviewDono
+                  ? <img src={fotoPreviewDono} alt={nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span style={{ fontSize: 15, fontWeight: 900, color: '#fff' }}>{nome[0]?.toUpperCase()}</span>
+                }
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: cores.textoTitulo }}>{nome}</div>
+                <div style={{ fontSize: 12, color: corDono, fontWeight: 600 }}>
+                  {TODAS_RELACOES.find(r => r.valor === relacaoDono)?.emoji}{' '}
+                  {TODAS_RELACOES.find(r => r.valor === relacaoDono)?.rotulo}
+                </div>
+              </div>
+              <div style={{
+                fontSize: 11, fontWeight: 700, color: '#22c55e',
+                background: '#22c55e18', padding: '3px 10px', borderRadius: 99,
+              }}>
+                ✓ Adicionado
               </div>
             </div>
 
@@ -292,7 +472,6 @@ export default function PaginaOnboarding({ idUsuario, aoConcluir }: Props) {
                     borderRadius: 14,
                     border: `1px solid ${cores.borda}`,
                   }}>
-                    {/* Avatar mini */}
                     <div style={{
                       width: 40, height: 40, borderRadius: '50%',
                       overflow: 'hidden', flexShrink: 0,
@@ -309,7 +488,8 @@ export default function PaginaOnboarding({ idUsuario, aoConcluir }: Props) {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 14, fontWeight: 700, color: cores.textoTitulo }}>{m.nome}</div>
                       <div style={{ fontSize: 12, color: m.cor, fontWeight: 600 }}>
-                        {RELACOES.find(r => r.valor === m.relacao)?.rotulo}
+                        {RELACOES_OUTROS.find(r => r.valor === m.relacao)?.emoji}{' '}
+                        {RELACOES_OUTROS.find(r => r.valor === m.relacao)?.rotulo}
                       </div>
                     </div>
                     <button
@@ -336,18 +516,20 @@ export default function PaginaOnboarding({ idUsuario, aoConcluir }: Props) {
               border: `1.5px solid ${form.cor}30`,
               display: 'flex', flexDirection: 'column', gap: 16,
             }}>
-              {/* AvatarPicker */}
+              <div style={{ fontSize: 13, fontWeight: 700, color: cores.textoSutil, textAlign: 'center' }}>
+                + Adicionar outro membro
+              </div>
+
               <AvatarPicker
                 nome={form.nome}
                 cor={form.cor}
                 fotoAtual={form.fotoPreview}
                 aoSelecionarArquivo={(arquivo, preview) => atualizarForm({ arquivo, fotoPreview: preview })}
                 aoRemoverFoto={() => atualizarForm({ arquivo: null, fotoPreview: null })}
-                tamanho={88}
+                tamanho={80}
                 coresUI={coresAvatarPicker}
               />
 
-              {/* Nome */}
               <div>
                 <label style={labelStyle}>Nome do membro</label>
                 <input
@@ -358,11 +540,10 @@ export default function PaginaOnboarding({ idUsuario, aoConcluir }: Props) {
                 />
               </div>
 
-              {/* Relação */}
               <div>
                 <label style={labelStyle}>Relação</label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 7 }}>
-                  {RELACOES.map(r => {
+                  {RELACOES_OUTROS.map(r => {
                     const sel = form.relacao === r.valor;
                     return (
                       <button
@@ -389,7 +570,6 @@ export default function PaginaOnboarding({ idUsuario, aoConcluir }: Props) {
                 </div>
               </div>
 
-              {/* Cor */}
               <div>
                 <label style={labelStyle}>Cor do avatar</label>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -413,7 +593,6 @@ export default function PaginaOnboarding({ idUsuario, aoConcluir }: Props) {
                 </div>
               </div>
 
-              {/* Botão adicionar */}
               <button
                 type="button"
                 onClick={adicionarMembro}
@@ -440,31 +619,27 @@ export default function PaginaOnboarding({ idUsuario, aoConcluir }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button
                 onClick={finalizar}
-                disabled={membros.length === 0 || salvando}
+                disabled={salvando}
                 style={{
                   padding: '16px', borderRadius: 16, border: 'none',
-                  cursor: membros.length > 0 && !salvando ? 'pointer' : 'not-allowed',
-                  background: membros.length > 0
-                    ? 'linear-gradient(135deg,#22c55e,#16a34a)'
-                    : cores.bgTerciario,
-                  color: membros.length > 0 ? '#fff' : cores.textoSutil,
+                  cursor: salvando ? 'not-allowed' : 'pointer',
+                  background: salvando
+                    ? cores.bgTerciario
+                    : 'linear-gradient(135deg,#22c55e,#16a34a)',
+                  color: salvando ? cores.textoSutil : '#fff',
                   fontSize: 16, fontWeight: 800,
-                  boxShadow: membros.length > 0 ? '0 6px 20px rgba(34,197,94,.4)' : 'none',
+                  boxShadow: salvando ? 'none' : '0 6px 20px rgba(34,197,94,.4)',
                   transition: 'all .2s',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 }}
               >
                 {salvando
                   ? <><Spinner /> Salvando...</>
-                  : '🎉 Finalizar configuração'
+                  : membros.length > 0
+                    ? `🎉 Finalizar (${membros.length + 1} membros)`
+                    : '🎉 Finalizar configuração'
                 }
               </button>
-
-              {membros.length === 0 && (
-                <p style={{ textAlign: 'center', fontSize: 12, color: cores.textoSutil, margin: 0 }}>
-                  Adicione pelo menos um membro para continuar
-                </p>
-              )}
 
               <button
                 onClick={() => setPasso(2)}
