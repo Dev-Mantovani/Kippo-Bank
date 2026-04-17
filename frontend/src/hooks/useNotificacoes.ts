@@ -65,13 +65,7 @@ export function useNotificacoes(cartoes: Cartao[], transacoes: Transacao[]): Not
     // ── 3. Limite próximo (> 80%) ──────────────────────────────────
     cartoes.forEach(c => {
       if (!c.limite) return;
-
-      // Calcula o valor usado a partir das transações (campo c.usado é estático no banco)
-      const usadoReal = transacoes
-        .filter(t => t.cartao_id === c.id && t.tipo === 'despesa')
-        .reduce((sum, t) => sum + t.valor, 0);
-
-      const pct = usadoReal / c.limite;
+      const pct = c.usado / c.limite;
       if (pct < 0.8) return;
 
       notifs.push({

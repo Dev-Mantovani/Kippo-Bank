@@ -5,6 +5,8 @@ import { useTamanhoTela } from './hooks/useTamanhoTela';
 import { UsuarioService } from './services/UsuarioService';
 import { CartaoService } from './services/CartaoService';
 import { TransacaoService } from './services/TransacaoService';
+import { FaturaService } from './services/FaturaService';
+import { obterMesVigenteFatura } from './utils/fatura';
 import Sidebar from './components/Sidebar/Sidebar';
 import HeaderGlobal from './components/HeaderGlobal/HeaderGlobal';
 import MobileSidebar from './components/MobileSidebar/MobileSidebar';
@@ -56,11 +58,20 @@ function AppInterno() {
   // Busca dados para notificações sempre que usuário/mês mudar
   useEffect(() => {
     if (!usuarioAtual) return;
+    const uid = usuarioAtual.id;
     Promise.all([
-      CartaoService.listar(usuarioAtual.id),
-      TransacaoService.listar(usuarioAtual.id, anoAtual, mesAtual),
-    ]).then(([cartoes, txs]) => {
-      setCartoesNotif(cartoes);
+      CartaoService.listar(uid),
+      TransacaoService.listar(uid, anoAtual, mesAtual),
+    ]).then(async ([cartoes, txs]) => {
+      // Enriquece cada cartão com o total real da fatura vigente
+      const cartoesComFatura = await Promise.all(
+        cartoes.map(async c => {
+          const { mes, ano } = obterMesVigenteFatura(c.fechamento_dia);
+          const fatura = await FaturaService.calcular(uid, c, mes, ano);
+          return { ...c, usado: fatura.total };
+        }),
+      );
+      setCartoesNotif(cartoesComFatura);
       setTransacoesNotif(txs);
     }).catch(() => {});
   }, [usuarioAtual, mesAtual, anoAtual]);
