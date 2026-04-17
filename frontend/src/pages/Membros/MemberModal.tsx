@@ -29,12 +29,13 @@ const RELACOES: { valor: TipoRelacao; rotulo: string; emoji: string }[] = [
 export default function ModalMembro({ idUsuario, membro, aoFechar, aoSalvar }: Props) {
   const { cores } = useTema();
 
-  const [nome,     setNome]     = useState(membro?.nome    ?? '');
-  const [relacao,  setRelacao]  = useState<TipoRelacao>(membro?.relacao ?? 'conjuge');
-  const [cor,      setCor]      = useState(membro?.cor     ?? '#6366f1');
+  const [nome,       setNome]       = useState(membro?.nome             ?? '');
+  const [relacao,    setRelacao]    = useState<TipoRelacao>(membro?.relacao ?? 'conjuge');
+  const [cor,        setCor]        = useState(membro?.cor               ?? '#6366f1');
+  const [whatsapp,   setWhatsapp]   = useState(membro?.whatsapp_number   ?? '');
   const [fotoPreview, setFotoPreview] = useState<string | null>(membro?.avatar_url ?? null);
   const [arquivoFoto, setArquivoFoto] = useState<File | null>(null);
-  const [salvando, setSalvando] = useState(false);
+  const [salvando,   setSalvando]   = useState(false);
 
   /* ── upload de foto ── */
   const aoSelecionarFoto = (arquivo: File, preview: string) => {
@@ -70,18 +71,18 @@ export default function ModalMembro({ idUsuario, membro, aoFechar, aoSalvar }: P
       // Foto removida manualmente
       if (!fotoPreview && !arquivoFoto) avatarUrl = null;
 
+      const wpp = whatsapp.replace(/\D/g, '') || null;
+
       if (membro) {
-        // UPDATE: nunca enviar user_id no body — causa 400 Bad Request
         const { error: errUpdate } = await supabase
           .from('family_members')
-          .update({ nome: nome.trim(), relacao, cor, avatar_url: avatarUrl })
+          .update({ nome: nome.trim(), relacao, cor, avatar_url: avatarUrl, whatsapp_number: wpp })
           .eq('id', membro.id);
         if (errUpdate) throw errUpdate;
       } else {
-        // INSERT: user_id obrigatório
         const { error: errInsert } = await supabase
           .from('family_members')
-          .insert({ user_id: idUsuario, nome: nome.trim(), relacao, cor, avatar_url: avatarUrl });
+          .insert({ user_id: idUsuario, nome: nome.trim(), relacao, cor, avatar_url: avatarUrl, whatsapp_number: wpp });
         if (errInsert) throw errInsert;
       }
 
@@ -193,6 +194,49 @@ export default function ModalMembro({ idUsuario, membro, aoFechar, aoSalvar }: P
             onFocus={e => e.target.style.borderColor = cor}
             onBlur={e => e.target.style.borderColor = nome ? cor + '60' : cores.borda}
           />
+        </div>
+
+        {/* ── WHATSAPP ── */}
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 700, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif", display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.7px' }}>
+            WhatsApp <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, opacity: .7 }}>(opcional)</span>
+          </label>
+          <div style={{ position: 'relative' }}>
+            <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 16, pointerEvents: 'none' }}>📱</span>
+            <input
+              value={whatsapp}
+              onChange={e => setWhatsapp(e.target.value)}
+              placeholder="Ex: 11987654321"
+              inputMode="numeric"
+              style={{
+                width: '100%', padding: '13px 42px 13px 42px', borderRadius: 14,
+                border: `1.5px solid ${whatsapp ? cor + '60' : cores.borda}`,
+                background: cores.bgTerciario, color: cores.textoCorpo,
+                fontSize: 15, fontFamily: "'DM Sans',sans-serif",
+                outline: 'none', boxSizing: 'border-box',
+                transition: 'border-color .2s',
+              }}
+              onFocus={e => e.target.style.borderColor = cor}
+              onBlur={e => e.target.style.borderColor = whatsapp ? cor + '60' : cores.borda}
+            />
+            {whatsapp && (
+              <button
+                type="button"
+                onClick={() => setWhatsapp('')}
+                style={{
+                  position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                  width: 26, height: 26, borderRadius: 8,
+                  border: 'none', background: cores.bgSecundario,
+                  cursor: 'pointer', color: cores.textoSutil,
+                  fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  lineHeight: 1,
+                }}
+              >×</button>
+            )}
+          </div>
+          <div style={{ fontSize: 11, color: cores.textoSutil, fontFamily: "'DM Sans',sans-serif", marginTop: 5, lineHeight: 1.4 }}>
+            Com DDD, só números. Ex: 11987654321
+          </div>
         </div>
 
         {/* ── RELAÇÃO ── */}

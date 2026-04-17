@@ -101,7 +101,7 @@ export default function PaginaMembros() {
 
       {/* Grid */}
       {!carregando && membros.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
           {membros.map(m => (
             <MemberCard
               key={m.id}
@@ -144,10 +144,10 @@ function MemberCard({ membro: m, cores, onEditar, onExcluir }: CardProps) {
       onMouseLeave={() => setHov(false)}
       style={{
         background: cores.bgCard,
-        borderRadius: 22,
+        borderRadius: 20,
         border: `1px solid ${hov ? m.cor + '55' : cores.borda}`,
-        padding: '22px 14px 16px',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+        padding: '20px 12px 16px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
         boxShadow: hov ? `0 10px 28px ${m.cor}22` : cores.sombra,
         transition: 'all .25s',
         transform: hov ? 'translateY(-3px)' : 'translateY(0)',
@@ -199,6 +199,20 @@ function MemberCard({ membro: m, cores, onEditar, onExcluir }: CardProps) {
         {ROTULOS_RELACAO[m.relacao] ?? m.relacao}
       </div>
 
+      {/* WhatsApp badge */}
+      {m.whatsapp_number && (
+        <div style={{
+          fontSize: 11, fontWeight: 600,
+          color: '#25d366',
+          background: '#25d36618',
+          padding: '4px 10px', borderRadius: 99,
+          fontFamily: "'DM Sans',sans-serif",
+          display: 'flex', alignItems: 'center', gap: 4,
+        }}>
+          <span style={{ fontSize: 12 }}>📱</span> Vinculado
+        </div>
+      )}
+
       {/* Ações */}
       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
         {/* Editar */}
@@ -206,12 +220,12 @@ function MemberCard({ membro: m, cores, onEditar, onExcluir }: CardProps) {
           onClick={onEditar}
           title="Editar"
           style={{
-            width: 38, height: 38, borderRadius: 12,
+            width: 42, height: 42, borderRadius: 13,
             border: 'none', background: cores.bgTerciario,
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'background .18s, transform .15s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = `${m.cor}22`; e.currentTarget.style.transform = 'scale(1.1)'; }}
+          onMouseEnter={e => { e.currentTarget.style.background = `${m.cor}22`; e.currentTarget.style.transform = 'scale(1.08)'; }}
           onMouseLeave={e => { e.currentTarget.style.background = cores.bgTerciario; e.currentTarget.style.transform = 'scale(1)'; }}
         >
           <svg width="15" height="15" fill="none" stroke={m.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -225,12 +239,12 @@ function MemberCard({ membro: m, cores, onEditar, onExcluir }: CardProps) {
           onClick={onExcluir}
           title="Excluir"
           style={{
-            width: 38, height: 38, borderRadius: 12,
+            width: 42, height: 42, borderRadius: 13,
             border: 'none', background: cores.vermelhFundo,
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'background .18s, transform .15s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.1)'; }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; }}
           onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
         >
           <svg width="14" height="14" fill="none" stroke={cores.vermelhoTexto} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">

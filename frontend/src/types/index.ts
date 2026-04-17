@@ -21,6 +21,7 @@ export interface MembroFamilia {
   relacao: TipoRelacao;
   cor: string;
   avatar_url?: string | null;
+  whatsapp_number?: string | null;
 }
 
 export interface Conta {
