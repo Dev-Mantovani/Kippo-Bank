@@ -218,7 +218,7 @@ router.post('/messages', async (req, res) => {
     let cartaoStatus = 'Não mencionado';
 
     if (parsed.cartao) {
-      const cartao = await supabaseService.buscarCartaoUsuario(membro.user_id, parsed.cartao);
+      const cartao = await supabaseService.buscarCartaoUsuario(membro.user_id, membro.id, parsed.cartao);
       if (cartao) {
         cartaoId = cartao.id;
         cartaoNome = cartao.nome;

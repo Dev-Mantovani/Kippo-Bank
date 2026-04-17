@@ -6,12 +6,13 @@ class SupabaseTransacaoService {
     this.supabase = createClient(config.supabase.url, config.supabase.key);
   }
 
-  async buscarCartaoUsuario(idUsuario, nomeCartao) {
+  async buscarCartaoUsuario(idUsuario, membroId, nomeCartao) {
     try {
       const { data, error } = await this.supabase
         .from('cards')
         .select('id, nome')
         .eq('user_id', idUsuario)
+        .eq('membro_id', membroId)
         .ilike('nome', `%${nomeCartao}%`)
         .limit(1)
         .single();
